@@ -5,6 +5,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -31,6 +34,27 @@ public class GlobalExceptionHandler {
 		return ResponseEntity
 				.badRequest()
 				.body(ApiResponse.fail("Validation failed", errors));
+	}
+
+	@ExceptionHandler(BadCredentialsException.class)
+	public ResponseEntity<ApiResponse<Void>> handleBadCredentialsException() {
+		return ResponseEntity
+				.status(HttpStatus.UNAUTHORIZED)
+				.body(ApiResponse.fail("Invalid email or password", List.of("Invalid credentials")));
+	}
+
+	@ExceptionHandler(AuthenticationException.class)
+	public ResponseEntity<ApiResponse<Void>> handleAuthenticationException() {
+		return ResponseEntity
+				.status(HttpStatus.UNAUTHORIZED)
+				.body(ApiResponse.fail("Authentication required", List.of("Authentication required")));
+	}
+
+	@ExceptionHandler(AccessDeniedException.class)
+	public ResponseEntity<ApiResponse<Void>> handleAccessDeniedException() {
+		return ResponseEntity
+				.status(HttpStatus.FORBIDDEN)
+				.body(ApiResponse.fail("Access denied", List.of("Access denied")));
 	}
 
 	@ExceptionHandler(Exception.class)
