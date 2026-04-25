@@ -56,6 +56,7 @@ class ArchitectureScaffoldTests {
 		assertThat(PACKAGE_ROOT.resolve("common").resolve("exception")).isDirectory();
 		assertThat(PACKAGE_ROOT.resolve("common").resolve("security")).isDirectory();
 		assertThat(PACKAGE_ROOT.resolve("common").resolve("util")).isDirectory();
+		assertThat(PACKAGE_ROOT.resolve("common").resolve("controller")).isDirectory();
 	}
 
 	@Test
