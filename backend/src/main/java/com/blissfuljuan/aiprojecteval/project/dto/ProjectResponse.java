@@ -1,4 +1,15 @@
 package com.blissfuljuan.aiprojecteval.project.dto;
 
-public record ProjectResponse(String id, String title) {
+import java.time.LocalDateTime;
+
+public record ProjectResponse(
+		Long id,
+		Long ownerUserId,
+		String ownerEmail,
+		String title,
+		String description,
+		String repositoryUrl,
+		LocalDateTime createdAt,
+		LocalDateTime updatedAt
+) {
 }
