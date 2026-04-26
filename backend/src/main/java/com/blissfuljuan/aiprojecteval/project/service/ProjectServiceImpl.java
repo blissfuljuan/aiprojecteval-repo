@@ -56,6 +56,15 @@ class ProjectServiceImpl implements ProjectService {
 
 	@Override
 	@Transactional(readOnly = true)
+	public List<ProjectResponse> findByOwner(Long ownerUserId) {
+		return projectRepository.findByOwnerUserIdOrderByCreatedAtDesc(ownerUserId)
+				.stream()
+				.map(projectMapper::toResponse)
+				.toList();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public ProjectResponse findById(String currentUserEmail, Long id) {
 		UserResponse owner = authService.getCurrentUser(currentUserEmail);
 

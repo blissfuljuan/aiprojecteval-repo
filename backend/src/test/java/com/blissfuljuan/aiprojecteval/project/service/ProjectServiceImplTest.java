@@ -72,6 +72,17 @@ class ProjectServiceImplTest {
 	}
 
 	@Test
+	void shouldFindProjectsByOwnerId() {
+		Project project = TestDataFactory.createProject(1L);
+		when(projectRepository.findByOwnerUserIdOrderByCreatedAtDesc(1L)).thenReturn(List.of(project));
+
+		List<ProjectResponse> response = projectService.findByOwner(1L);
+
+		assertThat(response).hasSize(1);
+		assertThat(response.get(0).ownerUserId()).isEqualTo(1L);
+	}
+
+	@Test
 	void shouldUpdateOwnedProject() {
 		UserResponse owner = TestDataFactory.createUserResponse(Role.STUDENT);
 		Project project = TestDataFactory.createProject(1L);

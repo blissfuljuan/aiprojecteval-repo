@@ -76,6 +76,16 @@ class ProjectControllerTest {
 	}
 
 	@Test
+	void shouldFindProjectsByOwner() throws Exception {
+		when(projectService.findByOwner(1L))
+				.thenReturn(List.of(TestDataFactory.createProjectResponse()));
+
+		mockMvc.perform(get("/api/projects/owner/1").with(user("admin@example.com")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data[0].ownerUserId").value(1));
+	}
+
+	@Test
 	void shouldReturnValidationErrorForBlankTitle() throws Exception {
 		mockMvc.perform(post("/api/projects")
 						.with(user("admin@example.com"))

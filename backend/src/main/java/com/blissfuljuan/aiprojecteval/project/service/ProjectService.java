@@ -10,6 +10,8 @@ public interface ProjectService {
 
 	List<ProjectResponse> findAll(String currentUserEmail);
 
+	List<ProjectResponse> findByOwner(Long ownerUserId);
+
 	ProjectResponse findById(String currentUserEmail, Long id);
 
 	ProjectResponse update(String currentUserEmail, Long id, ProjectRequest request);

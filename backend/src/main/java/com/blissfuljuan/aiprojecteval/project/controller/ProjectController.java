@@ -38,6 +38,11 @@ public class ProjectController {
 		return ApiResponse.ok(projectService.findAll(authentication.getName()));
 	}
 
+	@GetMapping("/owner/{ownerUserId}")
+	public ApiResponse<List<ProjectResponse>> findByOwner(@PathVariable Long ownerUserId) {
+		return ApiResponse.ok(projectService.findByOwner(ownerUserId));
+	}
+
 	@GetMapping("/{id}")
 	public ApiResponse<ProjectResponse> findById(Authentication authentication, @PathVariable Long id) {
 		return ApiResponse.ok(projectService.findById(authentication.getName(), id));
