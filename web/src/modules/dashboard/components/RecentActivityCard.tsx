@@ -1,10 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/common/ui/shadcn/card";
 
 const activities = [
-  "SRS document uploaded",
-  "AI analysis completed",
-  "Repository validation started",
-  "Instructor generated report",
+  "AI analysis generated for Campus Clinic System",
+  "Instructor reviewed Library Management App",
+  "Deployment URL validated for Event RSVP System",
 ];
 
 export function RecentActivityCard() {
@@ -20,7 +19,7 @@ export function RecentActivityCard() {
               <span className="mt-1.5 h-2 w-2 rounded-full bg-primary" />
               <div>
                 <p className="text-sm font-medium">{activity}</p>
-                <p className="text-xs text-muted-foreground">Static dashboard placeholder</p>
+                <p className="text-xs text-muted-foreground">Recent activity placeholder</p>
               </div>
             </div>
           ))}

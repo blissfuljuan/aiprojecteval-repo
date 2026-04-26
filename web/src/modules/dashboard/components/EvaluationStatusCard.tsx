@@ -2,18 +2,18 @@ import { Badge } from "@/common/ui/shadcn/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/common/ui/shadcn/card";
 
 const evaluationStatuses = [
-  { label: "Pending", value: "12", variant: "secondary" },
-  { label: "In Progress", value: "8", variant: "default" },
-  { label: "Needs Review", value: "4", variant: "outline" },
-  { label: "Completed", value: "35", variant: "secondary" },
+  { label: "Pending", value: "8", variant: "secondary" },
+  { label: "In Progress", value: "5", variant: "default" },
+  { label: "Completed", value: "21", variant: "outline" },
+  { label: "Needs Revision", value: "4", variant: "secondary" },
 ] as const;
 
 export function EvaluationStatusCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Evaluations by Status</CardTitle>
-        <CardDescription>Static evaluation workflow snapshot</CardDescription>
+        <CardTitle className="text-base">Evaluation Status</CardTitle>
+        <CardDescription>Static evaluation workflow summary</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {evaluationStatuses.map((status) => (

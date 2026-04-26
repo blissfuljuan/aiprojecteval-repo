@@ -1,29 +1,21 @@
 import { Badge } from "@/common/ui/shadcn/badge";
-import { Button } from "@/common/ui/shadcn/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/common/ui/shadcn/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/common/ui/shadcn/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/common/ui/shadcn/card";
 
 const submissions = [
   {
     project: "Campus Clinic System",
-    group: "Group 1",
-    submissionType: "SRS",
-    status: "Pending",
-    submittedAt: "Apr 25, 2026",
+    activity: "SRS submitted",
+    status: "Pending Review",
   },
   {
-    project: "Inventory Tracker",
-    group: "Group 2",
-    submissionType: "SDD",
-    status: "Under Review",
-    submittedAt: "Apr 24, 2026",
+    project: "Library Management App",
+    activity: "Repository linked",
+    status: "In Progress",
   },
   {
-    project: "Appointment App",
-    group: "Group 3",
-    submissionType: "Deployment",
+    project: "Event RSVP System",
+    activity: "Evaluation completed",
     status: "Completed",
-    submittedAt: "Apr 23, 2026",
   },
 ];
 
@@ -32,38 +24,18 @@ export function RecentSubmissionsTable() {
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Recent Submissions</CardTitle>
+        <CardDescription>Latest static project submission activity</CardDescription>
       </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Project</TableHead>
-              <TableHead>Group</TableHead>
-              <TableHead>Submission Type</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Submitted At</TableHead>
-              <TableHead className="text-right">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {submissions.map((submission) => (
-              <TableRow key={`${submission.project}-${submission.submissionType}`}>
-                <TableCell className="font-medium">{submission.project}</TableCell>
-                <TableCell>{submission.group}</TableCell>
-                <TableCell>{submission.submissionType}</TableCell>
-                <TableCell>
-                  <Badge variant="outline">{submission.status}</Badge>
-                </TableCell>
-                <TableCell>{submission.submittedAt}</TableCell>
-                <TableCell className="text-right">
-                  <Button variant="outline" size="sm">
-                    View
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <CardContent className="space-y-4">
+        {submissions.map((submission) => (
+          <div key={submission.project} className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">{submission.project}</p>
+              <p className="text-xs text-muted-foreground">{submission.activity}</p>
+            </div>
+            <Badge variant="outline">{submission.status}</Badge>
+          </div>
+        ))}
       </CardContent>
     </Card>
   );
