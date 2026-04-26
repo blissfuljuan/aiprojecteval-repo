@@ -1,1 +1,1 @@
-export const submissionService = {};
+export { submissionService } from "@/modules/submission/services/submissionService";

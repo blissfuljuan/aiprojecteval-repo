@@ -1,18 +1,22 @@
+import { Link } from "react-router";
 import { Badge } from "@/common/ui/shadcn/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/common/ui/shadcn/card";
 
 const submissions = [
   {
+    id: "campus-clinic",
     project: "Campus Clinic System",
     activity: "SRS submitted",
     status: "Pending Review",
   },
   {
+    id: "library-management",
     project: "Library Management App",
     activity: "Repository linked",
     status: "In Progress",
   },
   {
+    id: "event-rsvp",
     project: "Event RSVP System",
     activity: "Evaluation completed",
     status: "Completed",
@@ -28,13 +32,17 @@ export function RecentSubmissionsTable() {
       </CardHeader>
       <CardContent className="space-y-4">
         {submissions.map((submission) => (
-          <div key={submission.project} className="flex items-start justify-between gap-4">
+          <Link
+            key={submission.project}
+            to={`/submissions/${submission.id}`}
+            className="flex items-start justify-between gap-4 rounded-md p-2 transition-colors hover:bg-muted"
+          >
             <div className="space-y-1">
               <p className="text-sm font-medium">{submission.project}</p>
               <p className="text-xs text-muted-foreground">{submission.activity}</p>
             </div>
             <Badge variant="outline">{submission.status}</Badge>
-          </div>
+          </Link>
         ))}
       </CardContent>
     </Card>
