@@ -10,21 +10,21 @@ Modular Monolith (microservice-ready)
 
 ## Tech Stack
 
-Spring Boot
-React
-PostgreSQL
-OpenAI API
-Ollama
+- Spring Boot - 4.0.6
+- React
+- PostgreSQL
+- OpenAI API or Ollama
 
 ## Rules
 
 - No Lombok
 - Constructor injection
 - Modular boundaries enforced
+- Modules cannot directly access another module’s repository
 - Service-to-service module communication only
-- ApiResponse wrapper
-- Global exception handling
-- JWT authentication
+- Use environment variables
+- Use ApiResponse wrapper
+- Use GlobalExceptionHandler
 
 ## Module Order
 
