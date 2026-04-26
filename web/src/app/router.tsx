@@ -33,8 +33,6 @@ export const router = createBrowserRouter([
   },
   {
     element: <RequireAuth />,
-    children: [
-      ...dashboardRoutes,
-    ],
+    children: dashboardRoutes,
   },
 ]);

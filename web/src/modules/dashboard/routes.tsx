@@ -2,6 +2,7 @@ import type { RouteObject } from "react-router";
 import { PlaceholderPage } from "@/common/components/layout/PlaceholderPage";
 import { DashboardLayout } from "@/modules/dashboard/components/DashboardLayout";
 import { DashboardPage } from "@/modules/dashboard/pages/DashboardPage";
+import { projectRoutes } from "@/modules/project/routes";
 
 export const dashboardRoutes: RouteObject[] = [
   {
@@ -11,10 +12,7 @@ export const dashboardRoutes: RouteObject[] = [
         path: "/dashboard",
         element: <DashboardPage />,
       },
-      {
-        path: "/projects",
-        element: <PlaceholderPage title="Projects" />,
-      },
+      ...projectRoutes,
       {
         path: "/submissions",
         element: <PlaceholderPage title="Submissions" />,
