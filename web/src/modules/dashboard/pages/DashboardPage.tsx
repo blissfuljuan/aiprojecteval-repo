@@ -1,4 +1,5 @@
-import { BarChart3, ClipboardList, FileText, FolderKanban } from "lucide-react";
+import { Link } from "react-router";
+import { BarChart3, ClipboardList, FileText, FolderKanban, UploadCloud } from "lucide-react";
 import { Button } from "@/common/ui/shadcn/button";
 import { EvaluationStatusCard } from "@/modules/dashboard/components/EvaluationStatusCard";
 import { MetricCard } from "@/modules/dashboard/components/MetricCard";
@@ -15,7 +16,15 @@ export function DashboardPage() {
           <p className="text-sm text-muted-foreground">Overview of project evaluations and compliance status</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Button>Create Project</Button>
+          <Button asChild variant="outline">
+            <Link to="/projects/create">Create Project</Link>
+          </Button>
+          <Button asChild>
+            <Link to="/submissions/create">
+              <UploadCloud className="h-4 w-4" aria-hidden="true" />
+              Create Submission
+            </Link>
+          </Button>
         </div>
       </section>
 
