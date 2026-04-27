@@ -83,7 +83,10 @@ export function RegisterPage() {
         password,
         role,
       });
-      navigate(paths.dashboard, { replace: true });
+      navigate(paths.login, {
+        replace: true,
+        state: { registrationSuccess: true },
+      });
     } catch (requestError) {
       setError(identityService.getErrorMessage(requestError));
     } finally {

@@ -87,10 +87,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const register = useCallback(
     async (payload: RegisterRequest) => {
       const response = await identityService.register(payload);
-      persistSession(response);
       return response;
     },
-    [persistSession],
+    [],
   );
 
   const value = useMemo<AuthContextValue>(
