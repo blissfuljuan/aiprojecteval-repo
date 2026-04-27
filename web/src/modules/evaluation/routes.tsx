@@ -8,7 +8,7 @@ export const evaluationRoutes: RouteObject[] = [
     element: <EvaluationDashboardPage />,
   },
   {
-    path: "/evaluations/:id",
+    path: "/evaluations/:evaluationId",
     element: <EvaluationDetailsPage />,
   },
 ];

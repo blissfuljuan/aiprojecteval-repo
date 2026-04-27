@@ -9,13 +9,14 @@ import { projectRoutes } from "@/modules/project/routes";
 import { reportRoutes } from "@/modules/report/routes";
 import { repositoryAnalysisRoutes } from "@/modules/repository-analysis/routes";
 import { submissionRoutes } from "@/modules/submission/routes";
+import { paths } from "@/routes/paths";
 
 export const dashboardRoutes: RouteObject[] = [
   {
     element: <DashboardLayout />,
     children: [
       {
-        path: "/dashboard",
+        path: paths.dashboard,
         element: <DashboardPage />,
       },
       ...projectRoutes,
@@ -26,7 +27,7 @@ export const dashboardRoutes: RouteObject[] = [
       ...deploymentValidationRoutes,
       ...reportRoutes,
       {
-        path: "/settings",
+        path: paths.settings,
         element: <PlaceholderPage title="Settings" />,
       },
     ],

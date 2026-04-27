@@ -11,17 +11,18 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { cn } from "@/common/lib/utils";
+import { paths } from "@/routes/paths";
 
 const navItems = [
-  { label: "Dashboard", to: "/dashboard", icon: Gauge },
-  { label: "Projects", to: "/projects", icon: FolderKanban },
-  { label: "Submissions", to: "/submissions", icon: UploadCloud },
-  { label: "Documents", to: "/documents", icon: FileText },
-  { label: "Evaluations", to: "/evaluations", icon: ClipboardCheck },
-  { label: "Repository Analysis", to: "/repository-analysis", icon: GitBranch },
-  { label: "Deployment Validation", to: "/deployment-validation", icon: Rocket },
-  { label: "Reports", to: "/reports", icon: BarChart3 },
-  { label: "Settings", to: "/settings", icon: Settings },
+  { label: "Dashboard", to: paths.dashboard, icon: Gauge, end: true },
+  { label: "Projects", to: paths.projects, icon: FolderKanban },
+  { label: "Submissions", to: paths.submissions, icon: UploadCloud },
+  { label: "Documents", to: paths.documents, icon: FileText },
+  { label: "Evaluations", to: paths.evaluations, icon: ClipboardCheck },
+  { label: "Repository Analysis", to: paths.repositoryAnalysis, icon: GitBranch },
+  { label: "Deployment Validation", to: paths.deploymentValidation, icon: Rocket },
+  { label: "Reports", to: paths.reports, icon: BarChart3 },
+  { label: "Settings", to: paths.settings, icon: Settings },
 ];
 
 export function Sidebar() {
@@ -32,6 +33,7 @@ export function Sidebar() {
           <NavLink
             key={item.to}
             to={item.to}
+            end={item.end}
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
