@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { accessTokenKey } from "@/common/lib/api";
+import { accessTokenKey, authSessionClearedEvent, clearAuthSession, type AuthCleanupReason } from "@/common/lib/auth";
 import { identityService } from "@/modules/identity/services/identity.service";
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from "@/modules/identity/types";
 
@@ -25,17 +25,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [token, setToken] = useState<string | null>(() => window.localStorage.getItem(accessTokenKey));
   const [isLoading, setIsLoading] = useState(true);
 
+  const resetAuthState = useCallback(() => {
+    setToken(null);
+    setUser(null);
+    setIsLoading(false);
+  }, []);
+
   const persistSession = useCallback((response: AuthResponse) => {
     window.localStorage.setItem(accessTokenKey, response.token);
     setToken(response.token);
     setUser(response.user);
   }, []);
 
-  const clearSession = useCallback(() => {
-    identityService.clearLocalSession();
-    setToken(null);
-    setUser(null);
-  }, []);
+  const clearSession = useCallback(
+    (reason: AuthCleanupReason, options?: Parameters<typeof clearAuthSession>[1]) => {
+      clearAuthSession(reason, options);
+      resetAuthState();
+    },
+    [resetAuthState],
+  );
 
   const logout = useCallback(async () => {
     try {
@@ -43,8 +51,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch {
       // Expired or invalid tokens should not block local logout.
     } finally {
-      clearSession();
-      window.location.assign("/login");
+      clearSession("logout", { redirectToLogin: true });
     }
   }, [clearSession]);
 
@@ -52,9 +59,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const storedToken = window.localStorage.getItem(accessTokenKey);
 
     if (!storedToken) {
-      setToken(null);
-      setUser(null);
-      setIsLoading(false);
+      resetAuthState();
       return;
     }
 
@@ -65,11 +70,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setToken(storedToken);
       setUser(currentUser);
     } catch {
-      clearSession();
+      clearSession("session-restore-failed");
     } finally {
       setIsLoading(false);
     }
-  }, [clearSession]);
+  }, [clearSession, resetAuthState]);
+
+  useEffect(() => {
+    window.addEventListener(authSessionClearedEvent, resetAuthState);
+
+    return () => {
+      window.removeEventListener(authSessionClearedEvent, resetAuthState);
+    };
+  }, [resetAuthState]);
 
   useEffect(() => {
     void loadCurrentUser();
