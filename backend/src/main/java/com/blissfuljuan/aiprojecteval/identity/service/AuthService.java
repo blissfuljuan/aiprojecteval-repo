@@ -11,5 +11,7 @@ public interface AuthService {
 
 	AuthResponse login(LoginRequest request);
 
+	void logout();
+
 	UserResponse getCurrentUser(String email);
 }

@@ -11,8 +11,25 @@ import {
   DropdownMenuTrigger,
 } from "@/common/ui/shadcn/dropdown-menu";
 import { Input } from "@/common/ui/shadcn/input";
+import { useAuth } from "@/modules/identity/context/AuthContext";
+
+function getDisplayName(firstName?: string, lastName?: string) {
+  return [firstName, lastName].filter(Boolean).join(" ") || "User";
+}
+
+function getInitials(firstName?: string, lastName?: string) {
+  return `${firstName?.charAt(0) ?? ""}${lastName?.charAt(0) ?? ""}`.toUpperCase() || "U";
+}
 
 export function Topbar() {
+  const { user, logout } = useAuth();
+  const displayName = getDisplayName(user?.firstName, user?.lastName);
+  const initials = getInitials(user?.firstName, user?.lastName);
+
+  async function handleLogout() {
+    await logout();
+  }
+
   return (
     <header className="flex h-16 items-center justify-between border-b bg-background px-6">
       <div className="space-y-0.5">
@@ -34,22 +51,22 @@ export function Topbar() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-auto gap-3 px-2 py-1.5">
               <Avatar className="h-9 w-9">
-                <AvatarFallback>IU</AvatarFallback>
+                <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
               <div className="hidden text-left md:block">
-                <p className="text-sm font-medium leading-none">Instructor User</p>
+                <p className="text-sm font-medium leading-none">{displayName}</p>
                 <Badge variant="secondary" className="mt-1">
-                  INSTRUCTOR
+                  {user?.role ?? "USER"}
                 </Badge>
               </div>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Instructor User</DropdownMenuLabel>
+            <DropdownMenuLabel>{displayName}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Profile</DropdownMenuItem>
             <DropdownMenuItem>Account settings</DropdownMenuItem>
-            <DropdownMenuItem>Sign out placeholder</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void handleLogout()}>Sign out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

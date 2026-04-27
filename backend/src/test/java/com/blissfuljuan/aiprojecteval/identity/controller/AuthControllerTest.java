@@ -1,6 +1,7 @@
 package com.blissfuljuan.aiprojecteval.identity.controller;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -132,8 +133,24 @@ class AuthControllerTest {
 	}
 
 	@Test
+	void shouldLogoutWhenAuthenticated() throws Exception {
+		mockMvc.perform(post("/api/auth/logout").with(user("admin@example.com")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true))
+				.andExpect(jsonPath("$.message").value("Logged out successfully"));
+
+		verify(authService).logout();
+	}
+
+	@Test
 	void shouldReturnUnauthorizedForMeWithoutToken() throws Exception {
 		mockMvc.perform(get("/api/auth/me"))
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void shouldReturnUnauthorizedForLogoutWithoutToken() throws Exception {
+		mockMvc.perform(post("/api/auth/logout"))
 				.andExpect(status().isUnauthorized());
 	}
 
