@@ -2,6 +2,7 @@ import type { RouteObject } from "react-router";
 import { PlaceholderPage } from "@/common/components/layout/PlaceholderPage";
 import { DashboardLayout } from "@/modules/dashboard/components/DashboardLayout";
 import { DashboardPage } from "@/modules/dashboard/pages/DashboardPage";
+import { documentRoutes } from "@/modules/document/routes";
 import { projectRoutes } from "@/modules/project/routes";
 import { submissionRoutes } from "@/modules/submission/routes";
 
@@ -15,10 +16,7 @@ export const dashboardRoutes: RouteObject[] = [
       },
       ...projectRoutes,
       ...submissionRoutes,
-      {
-        path: "/documents",
-        element: <PlaceholderPage title="Documents" />,
-      },
+      ...documentRoutes,
       {
         path: "/evaluations",
         element: <PlaceholderPage title="Evaluations" />,
