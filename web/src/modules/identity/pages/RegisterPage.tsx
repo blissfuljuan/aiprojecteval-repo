@@ -1,7 +1,14 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { Button } from "@/common/ui/shadcn/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/common/ui/shadcn/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/common/ui/shadcn/card";
 import { Input } from "@/common/ui/shadcn/input";
 import { Label } from "@/common/ui/shadcn/label";
 import { Select } from "@/common/ui/shadcn/select";
@@ -11,21 +18,19 @@ import { identityService } from "@/modules/identity/services/identity.service";
 import type { PublicRegistrationRole } from "@/modules/identity/types";
 import { paths } from "@/routes/paths";
 
-const publicRoles: PublicRegistrationRole[] = ["INSTRUCTOR", "EVALUATOR", "ADVISER", "STUDENT"];
-
-function splitFullName(fullName: string) {
-  const parts = fullName.trim().split(/\s+/);
-  const firstName = parts[0] ?? "";
-  const lastName = parts.length > 1 ? parts[parts.length - 1] : "";
-  const middleName = parts.length > 2 ? parts.slice(1, -1).join(" ") : null;
-
-  return { firstName, middleName, lastName };
-}
+const publicRoles: PublicRegistrationRole[] = [
+  "INSTRUCTOR",
+  "EVALUATOR",
+  "ADVISER",
+  "STUDENT",
+];
 
 export function RegisterPage() {
   const navigate = useNavigate();
   const { register } = useAuth();
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [middleName, setMiddleName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<PublicRegistrationRole | "">("");
   const [password, setPassword] = useState("");
@@ -37,10 +42,13 @@ export function RegisterPage() {
     event.preventDefault();
     setError("");
 
-    const { firstName, middleName, lastName } = splitFullName(fullName);
+    if (!firstName.trim()) {
+      setError("First name is required.");
+      return;
+    }
 
-    if (!firstName || !lastName) {
-      setError("Enter at least a first and last name.");
+    if (!lastName.trim()) {
+      setError("Last name is required.");
       return;
     }
 
@@ -68,9 +76,9 @@ export function RegisterPage() {
 
     try {
       await register({
-        firstName,
-        middleName,
-        lastName,
+        firstName: firstName.trim(),
+        middleName: middleName.trim() || null,
+        lastName: lastName.trim(),
         email: email.trim(),
         password,
         role,
@@ -87,7 +95,9 @@ export function RegisterPage() {
     <Card className="w-full shadow-sm">
       <CardHeader className="space-y-2">
         <CardTitle className="text-2xl">Create account</CardTitle>
-        <CardDescription>Set up access for the evaluation and compliance analysis workspace.</CardDescription>
+        <CardDescription>
+          Set up access for the evaluation and compliance analysis workspace.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form className="grid gap-5" onSubmit={handleSubmit}>
@@ -96,20 +106,52 @@ export function RegisterPage() {
               {error}
             </div>
           ) : null}
-          <div className="grid gap-2">
-            <Label htmlFor="fullName">Full name</Label>
-            <Input
-              id="fullName"
-              type="text"
-              placeholder="Enter your full name"
-              autoComplete="name"
-              value={fullName}
-              onChange={(event) => setFullName(event.target.value)}
-              disabled={isSubmitting}
-            />
+          <div className="grid gap-5">
+            <div className="grid gap-2">
+              <Label htmlFor="firstName">
+                First name <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="firstName"
+                type="text"
+                placeholder="Enter first name"
+                autoComplete="given-name"
+                value={firstName}
+                onChange={(event) => setFirstName(event.target.value)}
+                disabled={isSubmitting}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="middleName">Middle name</Label>
+              <Input
+                id="middleName"
+                type="text"
+                placeholder="Enter middle name"
+                autoComplete="additional-name"
+                value={middleName}
+                onChange={(event) => setMiddleName(event.target.value)}
+                disabled={isSubmitting}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="lastName">
+                Last name <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="lastName"
+                type="text"
+                placeholder="Enter last name"
+                autoComplete="family-name"
+                value={lastName}
+                onChange={(event) => setLastName(event.target.value)}
+                disabled={isSubmitting}
+              />
+            </div>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">
+              Email <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="email"
               type="email"
@@ -121,11 +163,15 @@ export function RegisterPage() {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="role">Role</Label>
+            <Label htmlFor="role">
+              Role <span className="text-destructive">*</span>
+            </Label>
             <Select
               id="role"
               value={role}
-              onChange={(event) => setRole(event.target.value as PublicRegistrationRole)}
+              onChange={(event) =>
+                setRole(event.target.value as PublicRegistrationRole)
+              }
               disabled={isSubmitting}
             >
               <option value="" disabled>
@@ -139,7 +185,9 @@ export function RegisterPage() {
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">
+              Password <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="password"
               type="password"
@@ -151,7 +199,9 @@ export function RegisterPage() {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="confirmPassword">Confirm password</Label>
+            <Label htmlFor="confirmPassword">
+              Confirm password <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="confirmPassword"
               type="password"
@@ -171,7 +221,10 @@ export function RegisterPage() {
       <CardFooter className="justify-center p-6">
         <p className="text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link to="/login" className="font-medium text-primary hover:underline">
+          <Link
+            to="/login"
+            className="font-medium text-primary hover:underline"
+          >
             Sign in
           </Link>
         </p>
