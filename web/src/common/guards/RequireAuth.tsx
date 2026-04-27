@@ -1,6 +1,5 @@
-import { Outlet } from "react-router";
+import { ProtectedRoute } from "@/routes/ProtectedRoute";
 
 export function RequireAuth() {
-  // TODO: Replace with real authentication check.
-  return <Outlet />;
+  return <ProtectedRoute />;
 }
