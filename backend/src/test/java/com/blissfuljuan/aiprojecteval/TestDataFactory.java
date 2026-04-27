@@ -68,6 +68,7 @@ public final class TestDataFactory {
 				"Capstone Portal",
 				"AI-assisted project evaluation system",
 				"https://github.com/example/capstone-portal",
+				null,
 				LocalDateTime.of(2026, 4, 26, 10, 0),
 				LocalDateTime.of(2026, 4, 26, 10, 0)
 		);

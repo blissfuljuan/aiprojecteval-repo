@@ -69,6 +69,14 @@ public class SecurityConfig {
 								"/v3/api-docs/**",
 								"/api-docs/**"
 						).permitAll()
+						.requestMatchers(org.springframework.http.HttpMethod.POST, "/api/project-proposals")
+						.hasAnyRole("STUDENT", "ADMIN")
+						.requestMatchers(org.springframework.http.HttpMethod.GET, "/api/project-proposals/my")
+						.hasRole("STUDENT")
+						.requestMatchers(org.springframework.http.HttpMethod.GET, "/api/project-proposals")
+						.hasAnyRole("ADMIN", "INSTRUCTOR", "ADVISER")
+						.requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/project-proposals/*/instructor-decision")
+						.hasAnyRole("ADMIN", "INSTRUCTOR")
 						.anyRequest().authenticated()
 				)
 				.authenticationProvider(authenticationProvider())

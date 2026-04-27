@@ -9,6 +9,7 @@ public record ProjectResponse(
 		String title,
 		String description,
 		String repositoryUrl,
+		Long projectProposalId,
 		LocalDateTime createdAt,
 		LocalDateTime updatedAt
 ) {
