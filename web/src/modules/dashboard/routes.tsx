@@ -1,4 +1,6 @@
 import type { RouteObject } from "react-router";
+import { RequireRole } from "@/common/guards/RequireRole";
+import { studentModuleRoles, unrestrictedRoles } from "@/common/lib/roleAccess";
 import { PlaceholderPage } from "@/common/components/layout/PlaceholderPage";
 import { DashboardLayout } from "@/modules/dashboard/components/DashboardLayout";
 import { DashboardPage } from "@/modules/dashboard/pages/DashboardPage";
@@ -16,19 +18,34 @@ export const dashboardRoutes: RouteObject[] = [
     element: <DashboardLayout />,
     children: [
       {
-        path: paths.dashboard,
-        element: <DashboardPage />,
+        element: <RequireRole allowedRoles={unrestrictedRoles} />,
+        children: [
+          {
+            path: paths.dashboard,
+            element: <DashboardPage />,
+          },
+        ],
       },
-      ...projectRoutes,
-      ...submissionRoutes,
-      ...documentRoutes,
-      ...evaluationRoutes,
-      ...repositoryAnalysisRoutes,
-      ...deploymentValidationRoutes,
-      ...reportRoutes,
       {
-        path: paths.settings,
-        element: <PlaceholderPage title="Settings" />,
+        element: <RequireRole allowedRoles={studentModuleRoles} />,
+        children: [
+          ...projectRoutes,
+          ...submissionRoutes,
+          ...repositoryAnalysisRoutes,
+          ...deploymentValidationRoutes,
+        ],
+      },
+      {
+        element: <RequireRole allowedRoles={unrestrictedRoles} />,
+        children: [
+          ...documentRoutes,
+          ...evaluationRoutes,
+          ...reportRoutes,
+          {
+            path: paths.settings,
+            element: <PlaceholderPage title="Settings" />,
+          },
+        ],
       },
     ],
   },

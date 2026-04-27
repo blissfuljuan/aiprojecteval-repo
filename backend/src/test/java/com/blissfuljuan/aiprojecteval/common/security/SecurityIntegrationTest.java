@@ -40,4 +40,11 @@ class SecurityIntegrationTest {
 		mockMvc.perform(get("/api/auth/me"))
 				.andExpect(status().isUnauthorized());
 	}
+
+	@Test
+	void shouldRejectProtectedEndpointWithInvalidToken() throws Exception {
+		mockMvc.perform(get("/api/auth/me")
+						.header("Authorization", "Bearer invalid-token"))
+				.andExpect(status().isUnauthorized());
+	}
 }

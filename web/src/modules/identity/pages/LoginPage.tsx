@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/common/ui/shadcn/input";
 import { Label } from "@/common/ui/shadcn/label";
 import { Separator } from "@/common/ui/shadcn/separator";
+import { getDefaultAuthenticatedPath } from "@/common/lib/roleAccess";
 import { useAuth } from "@/modules/identity/context/AuthContext";
 import { identityService } from "@/modules/identity/services/identity.service";
 import { paths } from "@/routes/paths";
@@ -26,7 +27,6 @@ export function LoginPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const state = location.state as LocationState | null;
-  const redirectTo = state?.from?.pathname || paths.dashboard;
   const [showRegistrationSuccess, setShowRegistrationSuccess] = useState(Boolean(state?.registrationSuccess));
 
   useEffect(() => {
@@ -52,7 +52,8 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login({ email: email.trim(), password });
+      const response = await login({ email: email.trim(), password });
+      const redirectTo = state?.from?.pathname || getDefaultAuthenticatedPath(response.user);
       navigate(redirectTo, { replace: true });
     } catch (requestError) {
       setError(identityService.getErrorMessage(requestError));
