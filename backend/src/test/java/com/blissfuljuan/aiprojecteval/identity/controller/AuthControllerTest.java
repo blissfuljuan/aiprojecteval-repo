@@ -49,9 +49,9 @@ class AuthControllerTest {
 
 	@Test
 	void shouldRegisterSuccessfully() throws Exception {
-		AuthResponse response = TestDataFactory.createAuthResponse(Role.ADMIN);
+		AuthResponse response = TestDataFactory.createAuthResponse(Role.INSTRUCTOR);
 		when(authService.register(new RegisterRequest(
-				"Admin", null, "User", "admin@example.com", "password123", Role.ADMIN)))
+				"Admin", null, "User", "admin@example.com", "password123", Role.INSTRUCTOR)))
 				.thenReturn(response);
 
 		mockMvc.perform(post("/api/auth/register")
@@ -63,13 +63,14 @@ class AuthControllerTest {
 								  "lastName": "User",
 								  "email": "admin@example.com",
 								  "password": "password123",
-								  "role": "ADMIN"
+								  "role": "INSTRUCTOR"
 								}
 								"""))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true))
 				.andExpect(jsonPath("$.data.token").value("jwt-token"))
-				.andExpect(jsonPath("$.data.user.email").value("admin@example.com"));
+				.andExpect(jsonPath("$.data.user.email").value("admin@example.com"))
+				.andExpect(jsonPath("$.data.user.role").value("INSTRUCTOR"));
 	}
 
 	@Test

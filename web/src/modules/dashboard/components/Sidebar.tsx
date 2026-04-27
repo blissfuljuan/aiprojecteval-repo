@@ -10,26 +10,40 @@ import {
   Settings,
   UploadCloud,
 } from "lucide-react";
+import type { ComponentType } from "react";
+import { hasAnyRole } from "@/common/lib/auth";
+import { studentModuleRoles, unrestrictedRoles } from "@/common/lib/roleAccess";
 import { cn } from "@/common/lib/utils";
+import { useAuth } from "@/modules/identity/context/AuthContext";
+import type { Role } from "@/modules/identity/types";
 import { paths } from "@/routes/paths";
 
 const navItems = [
-  { label: "Dashboard", to: paths.dashboard, icon: Gauge, end: true },
-  { label: "Projects", to: paths.projects, icon: FolderKanban },
-  { label: "Submissions", to: paths.submissions, icon: UploadCloud },
-  { label: "Documents", to: paths.documents, icon: FileText },
-  { label: "Evaluations", to: paths.evaluations, icon: ClipboardCheck },
-  { label: "Repository Analysis", to: paths.repositoryAnalysis, icon: GitBranch },
-  { label: "Deployment Validation", to: paths.deploymentValidation, icon: Rocket },
-  { label: "Reports", to: paths.reports, icon: BarChart3 },
-  { label: "Settings", to: paths.settings, icon: Settings },
-];
+  { label: "Dashboard", to: paths.dashboard, icon: Gauge, end: true, roles: unrestrictedRoles },
+  { label: "Projects", to: paths.projects, icon: FolderKanban, roles: studentModuleRoles },
+  { label: "Submissions", to: paths.submissions, icon: UploadCloud, roles: studentModuleRoles },
+  { label: "Documents", to: paths.documents, icon: FileText, roles: unrestrictedRoles },
+  { label: "Evaluations", to: paths.evaluations, icon: ClipboardCheck, roles: unrestrictedRoles },
+  { label: "Repository Analysis", to: paths.repositoryAnalysis, icon: GitBranch, roles: studentModuleRoles },
+  { label: "Deployment Validation", to: paths.deploymentValidation, icon: Rocket, roles: studentModuleRoles },
+  { label: "Reports", to: paths.reports, icon: BarChart3, roles: unrestrictedRoles },
+  { label: "Settings", to: paths.settings, icon: Settings, roles: unrestrictedRoles },
+] satisfies Array<{
+  label: string;
+  to: string;
+  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean | "true" | "false" }>;
+  end?: boolean;
+  roles: Role[];
+}>;
 
 export function Sidebar() {
+  const { user } = useAuth();
+  const visibleNavItems = navItems.filter((item) => hasAnyRole(user, item.roles));
+
   return (
     <aside className="min-h-[calc(100vh-4rem)] w-[260px] shrink-0 border-r bg-background">
       <nav className="space-y-1 p-3">
-        {navItems.map((item) => (
+        {visibleNavItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
