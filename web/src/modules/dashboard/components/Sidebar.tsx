@@ -2,6 +2,7 @@ import { NavLink } from "react-router";
 import {
   BarChart3,
   ClipboardCheck,
+  ClipboardList,
   FileText,
   FolderKanban,
   Gauge,
@@ -21,6 +22,7 @@ import { paths } from "@/routes/paths";
 const navItems = [
   { label: "Dashboard", to: paths.dashboard, icon: Gauge, end: true, roles: unrestrictedRoles },
   { label: "Projects", to: paths.projects, icon: FolderKanban, roles: studentModuleRoles },
+  { label: "Proposals", to: paths.proposals, icon: ClipboardList, roles: studentModuleRoles },
   { label: "Submissions", to: paths.submissions, icon: UploadCloud, roles: studentModuleRoles },
   { label: "Documents", to: paths.documents, icon: FileText, roles: unrestrictedRoles },
   { label: "Evaluations", to: paths.evaluations, icon: ClipboardCheck, roles: unrestrictedRoles },

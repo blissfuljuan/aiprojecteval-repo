@@ -9,6 +9,7 @@ import com.blissfuljuan.aiprojecteval.identity.model.User;
 import com.blissfuljuan.aiprojecteval.identity.repository.UserRepository;
 import com.blissfuljuan.aiprojecteval.project.model.Project;
 import com.blissfuljuan.aiprojecteval.project.repository.ProjectRepository;
+import com.blissfuljuan.aiprojecteval.projectproposal.dto.AdviserDecisionRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalCreateRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalResponse;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalUpdateRequest;
@@ -151,6 +152,39 @@ class ProjectProposalServiceImpl implements ProjectProposalService {
 		}
 
 		projectProposalRepository.delete(proposal);
+	}
+
+	private static final Set<ProposalStatus> ADVISER_ACTIONABLE_STATUSES = EnumSet.of(
+			ProposalStatus.SUBMITTED,
+			ProposalStatus.ADVISER_REVIEW_SCHEDULED
+	);
+	private static final Set<ProposalStatus> ADVISER_DECISIONS = EnumSet.of(
+			ProposalStatus.ADVISER_REVIEW_SCHEDULED,
+			ProposalStatus.ADVISER_REVIEWED
+	);
+
+	@Override
+	@Transactional
+	public ProjectProposalResponse adviserDecision(String currentUserEmail, Long id, AdviserDecisionRequest request) {
+		User currentUser = findUserByEmail(currentUserEmail);
+		if (currentUser.getRole() != Role.ADVISER && currentUser.getRole() != Role.ADMIN) {
+			throw new BadRequestException("Only advisers or admins can record an adviser decision");
+		}
+		if (!ADVISER_DECISIONS.contains(request.decision())) {
+			throw new BadRequestException("Decision must be ADVISER_REVIEW_SCHEDULED or ADVISER_REVIEWED");
+		}
+
+		ProjectProposal proposal = findProposal(id);
+		if (!ADVISER_ACTIONABLE_STATUSES.contains(proposal.getStatus())) {
+			throw new BadRequestException("Proposal cannot receive an adviser decision in its current status");
+		}
+
+		proposal.setStatus(request.decision());
+		if (request.remarks() != null && !request.remarks().isBlank()) {
+			proposal.setAdviserRemarks(request.remarks());
+		}
+
+		return ProjectProposalResponse.fromEntity(projectProposalRepository.save(proposal));
 	}
 
 	@Override

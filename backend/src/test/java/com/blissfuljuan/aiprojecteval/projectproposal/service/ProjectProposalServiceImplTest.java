@@ -15,6 +15,7 @@ import com.blissfuljuan.aiprojecteval.identity.model.User;
 import com.blissfuljuan.aiprojecteval.identity.repository.UserRepository;
 import com.blissfuljuan.aiprojecteval.project.model.Project;
 import com.blissfuljuan.aiprojecteval.project.repository.ProjectRepository;
+import com.blissfuljuan.aiprojecteval.projectproposal.dto.AdviserDecisionRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalCreateRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalResponse;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalUpdateRequest;
@@ -213,6 +214,78 @@ class ProjectProposalServiceImplTest {
 				new ProposalDecisionRequest(ProposalStatus.REJECTED, "Reject later")))
 				.isInstanceOf(BadRequestException.class)
 				.hasMessage("Proposal already has a final decision");
+	}
+
+	@Test
+	void shouldScheduleAdviserReview() {
+		User adviser = user(Role.ADVISER);
+		ProjectProposal proposal = proposal(user(Role.STUDENT), ProposalStatus.SUBMITTED);
+		when(userRepository.findByEmail("adviser@example.com")).thenReturn(Optional.of(adviser));
+		when(projectProposalRepository.findById(10L)).thenReturn(Optional.of(proposal));
+		when(projectProposalRepository.save(proposal)).thenReturn(proposal);
+
+		ProjectProposalResponse response = projectProposalService.adviserDecision(
+				"adviser@example.com",
+				10L,
+				new AdviserDecisionRequest(ProposalStatus.ADVISER_REVIEW_SCHEDULED, null));
+
+		assertThat(response.status()).isEqualTo(ProposalStatus.ADVISER_REVIEW_SCHEDULED);
+	}
+
+	@Test
+	void shouldCompleteAdviserReviewWithRemarks() {
+		User adviser = user(Role.ADVISER);
+		ProjectProposal proposal = proposal(user(Role.STUDENT), ProposalStatus.ADVISER_REVIEW_SCHEDULED);
+		when(userRepository.findByEmail("adviser@example.com")).thenReturn(Optional.of(adviser));
+		when(projectProposalRepository.findById(10L)).thenReturn(Optional.of(proposal));
+		when(projectProposalRepository.save(proposal)).thenReturn(proposal);
+
+		ProjectProposalResponse response = projectProposalService.adviserDecision(
+				"adviser@example.com",
+				10L,
+				new AdviserDecisionRequest(ProposalStatus.ADVISER_REVIEWED, "Scope is feasible"));
+
+		assertThat(response.status()).isEqualTo(ProposalStatus.ADVISER_REVIEWED);
+		assertThat(proposal.getAdviserRemarks()).isEqualTo("Scope is feasible");
+	}
+
+	@Test
+	void shouldRejectAdviserDecisionFromStudent() {
+		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(user(Role.STUDENT)));
+
+		assertThatThrownBy(() -> projectProposalService.adviserDecision(
+				"student@example.com",
+				10L,
+				new AdviserDecisionRequest(ProposalStatus.ADVISER_REVIEWED, null)))
+				.isInstanceOf(BadRequestException.class)
+				.hasMessage("Only advisers or admins can record an adviser decision");
+	}
+
+	@Test
+	void shouldRejectInvalidAdviserDecisionStatus() {
+		when(userRepository.findByEmail("adviser@example.com")).thenReturn(Optional.of(user(Role.ADVISER)));
+
+		assertThatThrownBy(() -> projectProposalService.adviserDecision(
+				"adviser@example.com",
+				10L,
+				new AdviserDecisionRequest(ProposalStatus.APPROVED, null)))
+				.isInstanceOf(BadRequestException.class)
+				.hasMessage("Decision must be ADVISER_REVIEW_SCHEDULED or ADVISER_REVIEWED");
+	}
+
+	@Test
+	void shouldRejectAdviserDecisionOnApprovedProposal() {
+		User adviser = user(Role.ADVISER);
+		ProjectProposal proposal = proposal(user(Role.STUDENT), ProposalStatus.APPROVED);
+		when(userRepository.findByEmail("adviser@example.com")).thenReturn(Optional.of(adviser));
+		when(projectProposalRepository.findById(10L)).thenReturn(Optional.of(proposal));
+
+		assertThatThrownBy(() -> projectProposalService.adviserDecision(
+				"adviser@example.com",
+				10L,
+				new AdviserDecisionRequest(ProposalStatus.ADVISER_REVIEWED, null)))
+				.isInstanceOf(BadRequestException.class)
+				.hasMessage("Proposal cannot receive an adviser decision in its current status");
 	}
 
 	private ProjectProposalCreateRequest createRequest() {

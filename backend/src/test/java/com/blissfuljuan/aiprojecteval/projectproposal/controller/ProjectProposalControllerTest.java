@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.blissfuljuan.aiprojecteval.common.exception.GlobalExceptionHandler;
+import com.blissfuljuan.aiprojecteval.projectproposal.dto.AdviserDecisionRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalResponse;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProposalDecisionRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.model.ProposalStatus;
@@ -86,6 +87,43 @@ class ProjectProposalControllerTest {
 								  "remarks": "Approved"
 								}
 								"""))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void shouldAllowAdviserToRecordAdviserDecision() throws Exception {
+		AdviserDecisionRequest request = new AdviserDecisionRequest(ProposalStatus.ADVISER_REVIEWED, "Scope is feasible");
+		when(projectProposalService.adviserDecision("adviser@example.com", 10L, request))
+				.thenReturn(response(ProposalStatus.ADVISER_REVIEWED));
+
+		mockMvc.perform(patch("/api/project-proposals/10/adviser-decision")
+						.with(user("adviser@example.com").roles("ADVISER"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "decision": "ADVISER_REVIEWED",
+								  "remarks": "Scope is feasible"
+								}
+								"""))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.status").value("ADVISER_REVIEWED"));
+	}
+
+	@Test
+	void shouldRejectStudentFromAdviserDecisionEndpoint() throws Exception {
+		mockMvc.perform(patch("/api/project-proposals/10/adviser-decision")
+						.with(user("student@example.com").roles("STUDENT"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"decision\": \"ADVISER_REVIEWED\"}"))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void shouldRejectInstructorFromAdviserDecisionEndpoint() throws Exception {
+		mockMvc.perform(patch("/api/project-proposals/10/adviser-decision")
+						.with(user("instructor@example.com").roles("INSTRUCTOR"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"decision\": \"ADVISER_REVIEWED\"}"))
 				.andExpect(status().isForbidden());
 	}
 

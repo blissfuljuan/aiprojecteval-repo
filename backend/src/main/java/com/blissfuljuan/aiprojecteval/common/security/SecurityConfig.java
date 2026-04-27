@@ -10,6 +10,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -22,6 +23,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -69,14 +71,6 @@ public class SecurityConfig {
 								"/v3/api-docs/**",
 								"/api-docs/**"
 						).permitAll()
-						.requestMatchers(org.springframework.http.HttpMethod.POST, "/api/project-proposals")
-						.hasAnyRole("STUDENT", "ADMIN")
-						.requestMatchers(org.springframework.http.HttpMethod.GET, "/api/project-proposals/my")
-						.hasRole("STUDENT")
-						.requestMatchers(org.springframework.http.HttpMethod.GET, "/api/project-proposals")
-						.hasAnyRole("ADMIN", "INSTRUCTOR", "ADVISER")
-						.requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/project-proposals/*/instructor-decision")
-						.hasAnyRole("ADMIN", "INSTRUCTOR")
 						.anyRequest().authenticated()
 				)
 				.authenticationProvider(authenticationProvider())

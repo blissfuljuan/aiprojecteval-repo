@@ -16,4 +16,8 @@ export const paths = {
   deploymentValidation: "/deployment-validation",
   reports: "/reports",
   settings: "/settings",
+  proposals: "/proposals",
+  proposalCreate: "/proposals/create",
+  proposalDetails: (proposalId: string | number) => `/proposals/${proposalId}`,
+  proposalEdit: (proposalId: string | number) => `/proposals/${proposalId}/edit`,
 };
