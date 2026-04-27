@@ -3,6 +3,7 @@ import { PlaceholderPage } from "@/common/components/layout/PlaceholderPage";
 import { DashboardLayout } from "@/modules/dashboard/components/DashboardLayout";
 import { DashboardPage } from "@/modules/dashboard/pages/DashboardPage";
 import { documentRoutes } from "@/modules/document/routes";
+import { evaluationRoutes } from "@/modules/evaluation/routes";
 import { projectRoutes } from "@/modules/project/routes";
 import { submissionRoutes } from "@/modules/submission/routes";
 
@@ -17,10 +18,7 @@ export const dashboardRoutes: RouteObject[] = [
       ...projectRoutes,
       ...submissionRoutes,
       ...documentRoutes,
-      {
-        path: "/evaluations",
-        element: <PlaceholderPage title="Evaluations" />,
-      },
+      ...evaluationRoutes,
       {
         path: "/repository-analysis",
         element: <PlaceholderPage title="Repository Analysis" />,
