@@ -3,6 +3,7 @@ import { PlaceholderPage } from "@/common/components/layout/PlaceholderPage";
 import { DashboardLayout } from "@/modules/dashboard/components/DashboardLayout";
 import { DashboardPage } from "@/modules/dashboard/pages/DashboardPage";
 import { documentRoutes } from "@/modules/document/routes";
+import { deploymentValidationRoutes } from "@/modules/deployment-validation/routes";
 import { evaluationRoutes } from "@/modules/evaluation/routes";
 import { projectRoutes } from "@/modules/project/routes";
 import { repositoryAnalysisRoutes } from "@/modules/repository-analysis/routes";
@@ -21,10 +22,7 @@ export const dashboardRoutes: RouteObject[] = [
       ...documentRoutes,
       ...evaluationRoutes,
       ...repositoryAnalysisRoutes,
-      {
-        path: "/deployment-validation",
-        element: <PlaceholderPage title="Deployment Validation" />,
-      },
+      ...deploymentValidationRoutes,
       {
         path: "/reports",
         element: <PlaceholderPage title="Reports" />,
