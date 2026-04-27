@@ -21,10 +21,6 @@ async function logout() {
   await api.post<ApiResponse<null>>("/api/auth/logout");
 }
 
-function clearLocalSession() {
-  window.localStorage.removeItem("accessToken");
-}
-
 function getErrorMessage(error: unknown) {
   if (isAxiosError<ApiResponse<unknown>>(error)) {
     const data = error.response?.data;
@@ -45,6 +41,5 @@ export const identityService = {
   login,
   getCurrentUser,
   logout,
-  clearLocalSession,
   getErrorMessage,
 };

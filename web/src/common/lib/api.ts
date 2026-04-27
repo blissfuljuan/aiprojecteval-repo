@@ -1,7 +1,6 @@
 import axios from "axios";
 import { env } from "@/app/env";
-
-export const accessTokenKey = "accessToken";
+import { accessTokenKey, clearAuthSession } from "@/common/lib/auth";
 
 export const api = axios.create({
   baseURL: env.apiBaseUrl,
@@ -21,7 +20,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      window.localStorage.removeItem(accessTokenKey);
+      clearAuthSession("unauthorized", { redirectToLogin: true });
     }
 
     return Promise.reject(error);

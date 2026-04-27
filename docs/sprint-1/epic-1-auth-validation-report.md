@@ -125,6 +125,28 @@ Existing backend tests already covered:
 - Consider issuing consistent timestamps in Spring Security entry point responses.
 - Decide whether stateless logout is acceptable for Sprint 1 or whether token revocation/short-lived access tokens are required.
 
+## Applied Fix: Centralized 401 Auth Cleanup
+
+Centralized frontend auth cleanup was added through `clearAuthSession`, which removes the persisted access token, dispatches an auth session cleared event, and redirects to `/login` only when the current path matches a protected route root. `AuthProvider` now listens for that cleanup event and resets its in-memory `user`, `token`, loading state, and authenticated status. The Axios 401 interceptor now calls the centralized cleanup helper instead of only removing local storage, and regular logout uses the same cleanup path.
+
+Files changed:
+
+- `web/src/common/lib/auth.ts`
+- `web/src/common/lib/api.ts`
+- `web/src/modules/identity/context/AuthContext.tsx`
+- `web/src/modules/identity/services/identity.service.ts`
+- `docs/sprint-1/epic-1-auth-validation-report.md`
+
+Verification:
+
+- Frontend production build: `npm run build`
+- Frontend lint: `npm run lint`
+
+Remaining risks:
+
+- No frontend test framework or `npm test` script is configured yet, so the 401 cleanup behavior is verified by source inspection and existing build/lint checks rather than automated frontend tests.
+- Logout remains stateless; previously issued JWTs remain usable until expiration unless backend token revocation is added later.
+
 ## Final Verification Status
 
 Epic 1 Verification Status: PARTIALLY PASSED
