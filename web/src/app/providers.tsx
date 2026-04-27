@@ -1,15 +1,12 @@
 import type { ReactNode } from "react";
 import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
+import { AuthProvider } from "@/modules/identity/context/AuthContext";
 
 type AppProvidersProps = {
   children: ReactNode;
 };
 
 const theme = createTheme();
-
-function AuthProvider({ children }: AppProvidersProps) {
-  return <>{children}</>;
-}
 
 export function AppProviders({ children }: AppProvidersProps) {
   return (

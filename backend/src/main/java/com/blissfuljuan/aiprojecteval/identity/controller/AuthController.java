@@ -34,6 +34,12 @@ public class AuthController {
 		return ApiResponse.ok("Login successful", authService.login(request));
 	}
 
+	@PostMapping("/logout")
+	public ApiResponse<Void> logout() {
+		authService.logout();
+		return ApiResponse.ok("Logged out successfully", null);
+	}
+
 	@GetMapping("/me")
 	public ApiResponse<UserResponse> me(Authentication authentication) {
 		return ApiResponse.ok(authService.getCurrentUser(authentication.getName()));

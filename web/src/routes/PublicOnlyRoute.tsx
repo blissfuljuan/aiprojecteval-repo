@@ -1,14 +1,15 @@
 import { Navigate, Outlet } from "react-router";
+import { useAuth } from "@/modules/identity/context/AuthContext";
 import { paths } from "@/routes/paths";
 
-const temporaryAccessTokenKey = "accessToken";
-
-function hasTemporaryAuthToken() {
-  return Boolean(window.localStorage.getItem(temporaryAccessTokenKey));
-}
-
 export function PublicOnlyRoute() {
-  if (hasTemporaryAuthToken()) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading...</div>;
+  }
+
+  if (isAuthenticated) {
     return <Navigate to={paths.dashboard} replace />;
   }
 

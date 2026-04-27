@@ -57,8 +57,8 @@ class AuthServiceImplTest {
 
 	@Test
 	void shouldRegisterUserSuccessfully() {
-		RegisterRequest request = TestDataFactory.createRegisterRequest(Role.ADMIN);
-		User savedUser = TestDataFactory.createUser(Role.ADMIN);
+		RegisterRequest request = TestDataFactory.createRegisterRequest(Role.INSTRUCTOR);
+		User savedUser = TestDataFactory.createUser(Role.INSTRUCTOR);
 		when(userRepository.existsByEmail("admin@example.com")).thenReturn(false);
 		when(passwordEncoder.encode("password123")).thenReturn("encoded-password");
 		when(userRepository.save(any(User.class))).thenReturn(savedUser);
@@ -74,8 +74,17 @@ class AuthServiceImplTest {
 	}
 
 	@Test
-	void shouldRejectDuplicateEmailRegistration() {
+	void shouldRejectAdminRegistration() {
 		RegisterRequest request = TestDataFactory.createRegisterRequest(Role.ADMIN);
+
+		assertThatThrownBy(() -> authService.register(request))
+				.isInstanceOf(BadRequestException.class)
+				.hasMessage("Admin registration is not allowed through the public registration form.");
+	}
+
+	@Test
+	void shouldRejectDuplicateEmailRegistration() {
+		RegisterRequest request = TestDataFactory.createRegisterRequest(Role.INSTRUCTOR);
 		when(userRepository.existsByEmail("admin@example.com")).thenReturn(true);
 
 		assertThatThrownBy(() -> authService.register(request))
@@ -85,8 +94,8 @@ class AuthServiceImplTest {
 
 	@Test
 	void shouldHashPasswordOnRegistration() {
-		RegisterRequest request = TestDataFactory.createRegisterRequest(Role.ADMIN);
-		User savedUser = TestDataFactory.createUser(Role.ADMIN);
+		RegisterRequest request = TestDataFactory.createRegisterRequest(Role.STUDENT);
+		User savedUser = TestDataFactory.createUser(Role.STUDENT);
 		when(userRepository.existsByEmail("admin@example.com")).thenReturn(false);
 		when(passwordEncoder.encode("password123")).thenReturn("encoded-password");
 		when(userRepository.save(any(User.class))).thenReturn(savedUser);
@@ -114,6 +123,11 @@ class AuthServiceImplTest {
 		assertThat(response.token()).isEqualTo("jwt-token");
 		verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
 		verify(jwtService).generateToken(user);
+	}
+
+	@Test
+	void shouldLogoutWithoutServerSideState() {
+		authService.logout();
 	}
 
 	@Test

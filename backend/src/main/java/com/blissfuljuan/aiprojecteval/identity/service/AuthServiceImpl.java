@@ -8,6 +8,7 @@ import com.blissfuljuan.aiprojecteval.identity.dto.LoginRequest;
 import com.blissfuljuan.aiprojecteval.identity.dto.RegisterRequest;
 import com.blissfuljuan.aiprojecteval.identity.dto.UserResponse;
 import com.blissfuljuan.aiprojecteval.identity.mapper.UserMapper;
+import com.blissfuljuan.aiprojecteval.identity.model.Role;
 import com.blissfuljuan.aiprojecteval.identity.model.User;
 import com.blissfuljuan.aiprojecteval.identity.repository.UserRepository;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -40,6 +41,10 @@ class AuthServiceImpl implements AuthService {
 	@Override
 	@Transactional
 	public AuthResponse register(RegisterRequest request) {
+		if (request.role() == Role.ADMIN) {
+			throw new BadRequestException("Admin registration is not allowed through the public registration form.");
+		}
+
 		if (userRepository.existsByEmail(request.email())) {
 			throw new BadRequestException("Email is already registered");
 		}
@@ -78,6 +83,11 @@ class AuthServiceImpl implements AuthService {
 				jwtService.getExpirationMs(),
 				UserMapper.toUserResponse(user)
 		);
+	}
+
+	@Override
+	public void logout() {
+		// Future enhancement: implement token blacklist or refresh token revocation for stronger logout control.
 	}
 
 	@Override

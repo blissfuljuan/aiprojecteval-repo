@@ -1,16 +1,16 @@
 import { Navigate, Outlet, useLocation } from "react-router";
+import { useAuth } from "@/modules/identity/context/AuthContext";
 import { paths } from "@/routes/paths";
-
-const temporaryAccessTokenKey = "accessToken";
-
-function hasTemporaryAuthToken() {
-  return Boolean(window.localStorage.getItem(temporaryAccessTokenKey));
-}
 
 export function ProtectedRoute() {
   const location = useLocation();
+  const { isAuthenticated, isLoading } = useAuth();
 
-  if (hasTemporaryAuthToken()) {
+  if (isLoading) {
+    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading...</div>;
+  }
+
+  if (isAuthenticated) {
     return <Outlet />;
   }
 
