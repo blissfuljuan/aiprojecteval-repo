@@ -33,6 +33,9 @@ public class Project {
 	@Column(length = 1000)
 	private String repositoryUrl;
 
+	@Column(unique = true)
+	private Long projectProposalId;
+
 	@Column(nullable = false, updatable = false)
 	private LocalDateTime createdAt;
 
@@ -108,6 +111,14 @@ public class Project {
 
 	public void setRepositoryUrl(String repositoryUrl) {
 		this.repositoryUrl = repositoryUrl;
+	}
+
+	public Long getProjectProposalId() {
+		return projectProposalId;
+	}
+
+	public void setProjectProposalId(Long projectProposalId) {
+		this.projectProposalId = projectProposalId;
 	}
 
 	public LocalDateTime getCreatedAt() {
