@@ -72,6 +72,19 @@ class ProjectServiceImplTest {
 	}
 
 	@Test
+	void shouldFindAllProjectsForInstructor() {
+		UserResponse instructor = TestDataFactory.createUserResponse(Role.INSTRUCTOR);
+		Project project = TestDataFactory.createProject(1L);
+		when(authService.getCurrentUser("admin@example.com")).thenReturn(instructor);
+		when(projectRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(project));
+
+		List<ProjectResponse> response = projectService.findAll("admin@example.com");
+
+		assertThat(response).hasSize(1);
+		assertThat(response.get(0).id()).isEqualTo(1L);
+	}
+
+	@Test
 	void shouldFindProjectsByOwnerId() {
 		Project project = TestDataFactory.createProject(1L);
 		when(projectRepository.findByOwnerUserIdOrderByCreatedAtDesc(1L)).thenReturn(List.of(project));

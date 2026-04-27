@@ -1,5 +1,6 @@
 package com.blissfuljuan.aiprojecteval.projectproposal.service;
 
+import com.blissfuljuan.aiprojecteval.projectproposal.dto.AdviserDecisionRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalCreateRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalResponse;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalUpdateRequest;
@@ -19,6 +20,8 @@ public interface ProjectProposalService {
 	ProjectProposalResponse updateProposal(String currentUserEmail, Long id, ProjectProposalUpdateRequest request);
 
 	void deleteProposal(String currentUserEmail, Long id);
+
+	ProjectProposalResponse adviserDecision(String currentUserEmail, Long id, AdviserDecisionRequest request);
 
 	ProjectProposalResponse instructorDecision(String currentUserEmail, Long id, ProposalDecisionRequest request);
 }

@@ -2,6 +2,7 @@ package com.blissfuljuan.aiprojecteval.project.service;
 
 import com.blissfuljuan.aiprojecteval.common.exception.ResourceNotFoundException;
 import com.blissfuljuan.aiprojecteval.identity.dto.UserResponse;
+import com.blissfuljuan.aiprojecteval.identity.model.Role;
 import com.blissfuljuan.aiprojecteval.identity.service.AuthService;
 import com.blissfuljuan.aiprojecteval.project.dto.ProjectRequest;
 import com.blissfuljuan.aiprojecteval.project.dto.ProjectResponse;
@@ -48,7 +49,11 @@ class ProjectServiceImpl implements ProjectService {
 	public List<ProjectResponse> findAll(String currentUserEmail) {
 		UserResponse owner = authService.getCurrentUser(currentUserEmail);
 
-		return projectRepository.findByOwnerUserIdOrderByCreatedAtDesc(owner.id())
+		List<Project> projects = owner.role() == Role.STUDENT
+				? projectRepository.findByOwnerUserIdOrderByCreatedAtDesc(owner.id())
+				: projectRepository.findAllByOrderByCreatedAtDesc();
+
+		return projects
 				.stream()
 				.map(projectMapper::toResponse)
 				.toList();

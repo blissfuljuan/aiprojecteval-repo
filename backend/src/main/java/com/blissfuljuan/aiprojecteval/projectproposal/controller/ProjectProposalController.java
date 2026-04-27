@@ -1,6 +1,7 @@
 package com.blissfuljuan.aiprojecteval.projectproposal.controller;
 
 import com.blissfuljuan.aiprojecteval.common.response.ApiResponse;
+import com.blissfuljuan.aiprojecteval.projectproposal.dto.AdviserDecisionRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalCreateRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalResponse;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalUpdateRequest;
@@ -8,6 +9,7 @@ import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProposalDecisionReques
 import com.blissfuljuan.aiprojecteval.projectproposal.service.ProjectProposalService;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,6 +32,7 @@ public class ProjectProposalController {
 	}
 
 	@PostMapping
+	@PreAuthorize("hasAnyRole('STUDENT', 'ADMIN')")
 	public ApiResponse<ProjectProposalResponse> create(
 			Authentication authentication,
 			@Valid @RequestBody ProjectProposalCreateRequest request) {
@@ -37,11 +40,13 @@ public class ProjectProposalController {
 	}
 
 	@GetMapping("/my")
+	@PreAuthorize("hasRole('STUDENT')")
 	public ApiResponse<List<ProjectProposalResponse>> getMyProposals(Authentication authentication) {
 		return ApiResponse.ok(projectProposalService.getMyProposals(authentication.getName()));
 	}
 
 	@GetMapping
+	@PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR', 'ADVISER')")
 	public ApiResponse<List<ProjectProposalResponse>> getAllProposals(Authentication authentication) {
 		return ApiResponse.ok(projectProposalService.getAllProposals(authentication.getName()));
 	}
@@ -66,7 +71,18 @@ public class ProjectProposalController {
 		return ApiResponse.ok("Project proposal deleted", null);
 	}
 
+	@PatchMapping("/{id}/adviser-decision")
+	@PreAuthorize("hasAnyRole('ADMIN', 'ADVISER')")
+	public ApiResponse<ProjectProposalResponse> adviserDecision(
+			Authentication authentication,
+			@PathVariable Long id,
+			@Valid @RequestBody AdviserDecisionRequest request) {
+		return ApiResponse.ok("Adviser decision recorded",
+				projectProposalService.adviserDecision(authentication.getName(), id, request));
+	}
+
 	@PatchMapping("/{id}/instructor-decision")
+	@PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR')")
 	public ApiResponse<ProjectProposalResponse> instructorDecision(
 			Authentication authentication,
 			@PathVariable Long id,
