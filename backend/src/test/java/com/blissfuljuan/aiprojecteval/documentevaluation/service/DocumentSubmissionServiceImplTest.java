@@ -38,6 +38,7 @@ import com.blissfuljuan.aiprojecteval.project.repository.ProjectRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -190,8 +191,14 @@ class DocumentSubmissionServiceImplTest {
 		DocumentRequirement requirement = requirement(20L, requirementSet);
 		DocumentRequirementSetAssignment assignment = classAssignment(30L, requirementSet, RequirementSetAssignmentStatus.ACTIVE);
 		DocumentSubmission submission = submission(40L, student, assignment, requirement, DocumentSubmissionStatus.DRAFT);
+		DocumentSubmissionFile uploadedFile = submissionFile(70L, submission);
+		uploadedFile.setFileStatus(DocumentSubmissionFileStatus.UPLOADED);
+		uploadedFile.setStoragePath("uploads/srs.pdf");
 		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
 		when(submissionRepository.findById(40L)).thenReturn(Optional.of(submission));
+		when(fileRepository.findBySubmissionIdAndFileStatusInOrderByCreatedAtAsc(
+				40L,
+				Set.of(DocumentSubmissionFileStatus.UPLOADED))).thenReturn(List.of(uploadedFile));
 		when(submissionRepository.save(any(DocumentSubmission.class)))
 				.thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -199,6 +206,26 @@ class DocumentSubmissionServiceImplTest {
 
 		assertThat(response.status()).isEqualTo(DocumentSubmissionStatus.SUBMITTED);
 		assertThat(response.submittedAt()).isNotNull();
+	}
+
+	@Test
+	void shouldRejectSubmittingDraftWithoutUploadedFile() {
+		User student = user(1L, "student@example.com", Role.STUDENT);
+		DocumentRequirementSet requirementSet = requirementSet(10L);
+		DocumentRequirement requirement = requirement(20L, requirementSet);
+		DocumentRequirementSetAssignment assignment = classAssignment(30L, requirementSet, RequirementSetAssignmentStatus.ACTIVE);
+		DocumentSubmission submission = submission(40L, student, assignment, requirement, DocumentSubmissionStatus.DRAFT);
+		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
+		when(submissionRepository.findById(40L)).thenReturn(Optional.of(submission));
+		when(fileRepository.findBySubmissionIdAndFileStatusInOrderByCreatedAtAsc(
+				40L,
+				Set.of(DocumentSubmissionFileStatus.UPLOADED))).thenReturn(List.of());
+
+		assertThatThrownBy(() -> service.submitDraftSubmission("student@example.com", 40L))
+				.isInstanceOf(BadRequestException.class)
+				.hasMessage("Submission must have at least one uploaded file before it can be submitted");
+
+		verify(submissionRepository, never()).save(any(DocumentSubmission.class));
 	}
 
 	@Test

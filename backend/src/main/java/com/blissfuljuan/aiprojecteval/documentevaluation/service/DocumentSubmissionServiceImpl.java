@@ -135,6 +135,9 @@ class DocumentSubmissionServiceImpl implements DocumentSubmissionService {
 		if (submission.getStatus() != DocumentSubmissionStatus.DRAFT) {
 			throw new BadRequestException("Only draft submissions can be submitted");
 		}
+		if (!hasValidUploadedFile(submission)) {
+			throw new BadRequestException("Submission must have at least one uploaded file before it can be submitted");
+		}
 
 		submission.setStatus(DocumentSubmissionStatus.SUBMITTED);
 		submission.setSubmittedAt(LocalDateTime.now());
@@ -444,6 +447,20 @@ class DocumentSubmissionServiceImpl implements DocumentSubmissionService {
 
 	private boolean matches(Long actual, Long expected) {
 		return expected == null || expected.equals(actual);
+	}
+
+	private boolean hasValidUploadedFile(DocumentSubmission submission) {
+		return fileRepository
+				.findBySubmissionIdAndFileStatusInOrderByCreatedAtAsc(
+						submission.getId(),
+						Set.of(DocumentSubmissionFileStatus.UPLOADED))
+				.stream()
+				.anyMatch(file -> hasText(file.getOriginalFileName())
+						&& (hasText(file.getStoragePath()) || hasText(file.getStoredFileName()) || hasText(file.getFileUrl())));
+	}
+
+	private boolean hasText(String value) {
+		return value != null && !value.isBlank();
 	}
 
 	private void checkCanUpdateDraft(User currentUser, DocumentSubmission submission) {

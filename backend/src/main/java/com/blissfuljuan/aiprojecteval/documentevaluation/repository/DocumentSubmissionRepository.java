@@ -14,6 +14,18 @@ public interface DocumentSubmissionRepository extends JpaRepository<DocumentSubm
 
 	List<DocumentSubmission> findByAssignmentIdOrderByCreatedAtDesc(Long assignmentId);
 
+	List<DocumentSubmission> findByAssignmentIdAndSubmittedByIdOrderByCreatedAtDesc(
+			Long assignmentId,
+			Long submittedById);
+
+	List<DocumentSubmission> findByAssignmentIdAndProjectIdOrderByCreatedAtDesc(
+			Long assignmentId,
+			Long projectId);
+
+	List<DocumentSubmission> findByAssignmentIdAndCourseClassIdOrderByCreatedAtDesc(
+			Long assignmentId,
+			Long courseClassId);
+
 	List<DocumentSubmission> findByProjectIdOrderByCreatedAtDesc(Long projectId);
 
 	List<DocumentSubmission> findByCourseClassIdOrderByCreatedAtDesc(Long courseClassId);
