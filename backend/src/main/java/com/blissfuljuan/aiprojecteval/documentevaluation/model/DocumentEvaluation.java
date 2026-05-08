@@ -55,9 +55,8 @@ public class DocumentEvaluation {
 	private Long id;
 
 	@NotNull
-	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "submission_id", nullable = false)
-	private DocumentSubmission submission;
+	@Column(name = "submission_id", nullable = false)
+	private Long submissionId;
 
 	@NotNull
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -206,12 +205,12 @@ public class DocumentEvaluation {
 		this.id = id;
 	}
 
-	public DocumentSubmission getSubmission() {
-		return submission;
+	public Long getSubmissionId() {
+		return submissionId;
 	}
 
-	public void setSubmission(DocumentSubmission submission) {
-		this.submission = submission;
+	public void setSubmissionId(Long submissionId) {
+		this.submissionId = submissionId;
 	}
 
 	public DocumentRequirementSetAssignment getAssignment() {

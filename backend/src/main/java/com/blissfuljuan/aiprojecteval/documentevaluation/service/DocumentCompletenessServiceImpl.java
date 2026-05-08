@@ -6,24 +6,25 @@ import com.blissfuljuan.aiprojecteval.courseclass.model.CourseClass;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.ClassAssignmentCompletenessSummaryResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentCompletenessReportResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentRequirementCompletenessItemResponse;
-import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentSubmissionFileSummaryResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentCompletenessFileSummaryResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.ConfigurationStatus;
-import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentSubmissionFileStatus;
-import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentSubmissionStatus;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.RequirementSetAssignmentStatus;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirement;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirementSet;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirementSetAssignment;
-import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentSubmission;
-import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentSubmissionFile;
 import com.blissfuljuan.aiprojecteval.documentevaluation.repository.DocumentRequirementRepository;
 import com.blissfuljuan.aiprojecteval.documentevaluation.repository.DocumentRequirementSetAssignmentRepository;
-import com.blissfuljuan.aiprojecteval.documentevaluation.repository.DocumentSubmissionRepository;
 import com.blissfuljuan.aiprojecteval.identity.model.Role;
 import com.blissfuljuan.aiprojecteval.identity.model.User;
 import com.blissfuljuan.aiprojecteval.identity.repository.UserRepository;
 import com.blissfuljuan.aiprojecteval.project.model.Project;
 import com.blissfuljuan.aiprojecteval.project.repository.ProjectRepository;
+import com.blissfuljuan.aiprojecteval.submission.dto.response.SubmissionFileResponse;
+import com.blissfuljuan.aiprojecteval.submission.dto.response.SubmissionResponse;
+import com.blissfuljuan.aiprojecteval.submission.enums.SubmissionFileStatus;
+import com.blissfuljuan.aiprojecteval.submission.enums.SubmissionStatus;
+import com.blissfuljuan.aiprojecteval.submission.enums.SubmissionType;
+import com.blissfuljuan.aiprojecteval.submission.service.SubmissionQueryService;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,31 +39,31 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 class DocumentCompletenessServiceImpl implements DocumentCompletenessService {
 
-	private static final List<DocumentSubmissionStatus> SATISFYING_SUBMISSION_STATUSES = List.of(
-			DocumentSubmissionStatus.SUBMITTED,
-			DocumentSubmissionStatus.RESUBMITTED,
-			DocumentSubmissionStatus.ACCEPTED);
+	private static final List<SubmissionStatus> SATISFYING_SUBMISSION_STATUSES = List.of(
+			SubmissionStatus.SUBMITTED,
+			SubmissionStatus.RESUBMITTED,
+			SubmissionStatus.ACCEPTED);
 
-	private static final List<DocumentSubmissionFileStatus> INACTIVE_FILE_STATUSES = List.of(
-			DocumentSubmissionFileStatus.REPLACED,
-			DocumentSubmissionFileStatus.REMOVED,
-			DocumentSubmissionFileStatus.INVALID);
+	private static final List<SubmissionFileStatus> INACTIVE_FILE_STATUSES = List.of(
+			SubmissionFileStatus.REPLACED,
+			SubmissionFileStatus.REMOVED,
+			SubmissionFileStatus.INVALID);
 
 	private final DocumentRequirementSetAssignmentRepository assignmentRepository;
 	private final DocumentRequirementRepository requirementRepository;
-	private final DocumentSubmissionRepository submissionRepository;
+	private final SubmissionQueryService submissionQueryService;
 	private final UserRepository userRepository;
 	private final ProjectRepository projectRepository;
 
 	DocumentCompletenessServiceImpl(
 			DocumentRequirementSetAssignmentRepository assignmentRepository,
 			DocumentRequirementRepository requirementRepository,
-			DocumentSubmissionRepository submissionRepository,
+			SubmissionQueryService submissionQueryService,
 			UserRepository userRepository,
 			ProjectRepository projectRepository) {
 		this.assignmentRepository = assignmentRepository;
 		this.requirementRepository = requirementRepository;
-		this.submissionRepository = submissionRepository;
+		this.submissionQueryService = submissionQueryService;
 		this.userRepository = userRepository;
 		this.projectRepository = projectRepository;
 	}
@@ -72,8 +73,8 @@ class DocumentCompletenessServiceImpl implements DocumentCompletenessService {
 	public DocumentCompletenessReportResponse getMyCompletenessReport(String currentUserEmail, Long assignmentId) {
 		User currentUser = findUserByEmail(currentUserEmail);
 		DocumentRequirementSetAssignment assignment = findAssignment(assignmentId);
-		List<DocumentSubmission> submissions = submissionRepository
-				.findByAssignmentIdAndSubmittedByIdOrderByCreatedAtDesc(assignmentId, currentUser.getId());
+		List<SubmissionResponse> submissions = submissionQueryService
+				.findSubmissionsByTypeAndAssignmentAndSubmitter(SubmissionType.DOCUMENT, assignmentId, currentUser.getId());
 		return buildReport(assignment, currentUser, null, submissions);
 	}
 
@@ -88,8 +89,8 @@ class DocumentCompletenessServiceImpl implements DocumentCompletenessService {
 		checkCanManageAssignment(currentUser, assignment);
 		User submitter = userRepository.findById(userId)
 				.orElseThrow(() -> new ResourceNotFoundException("User not found"));
-		List<DocumentSubmission> submissions = submissionRepository
-				.findByAssignmentIdAndSubmittedByIdOrderByCreatedAtDesc(assignmentId, userId);
+		List<SubmissionResponse> submissions = submissionQueryService
+				.findSubmissionsByTypeAndAssignmentAndSubmitter(SubmissionType.DOCUMENT, assignmentId, userId);
 		return buildReport(assignment, submitter, null, submissions);
 	}
 
@@ -110,8 +111,8 @@ class DocumentCompletenessServiceImpl implements DocumentCompletenessService {
 			throw new AccessDeniedException("Access denied");
 		}
 
-		List<DocumentSubmission> submissions = submissionRepository
-				.findByAssignmentIdAndProjectIdOrderByCreatedAtDesc(assignmentId, projectId);
+		List<SubmissionResponse> submissions = submissionQueryService
+				.findSubmissionsByTypeAndAssignmentAndProject(SubmissionType.DOCUMENT, assignmentId, projectId);
 		return buildReport(assignment, null, project, submissions);
 	}
 
@@ -128,15 +129,15 @@ class DocumentCompletenessServiceImpl implements DocumentCompletenessService {
 			throw new BadRequestException("Requirement set assignment is not assigned to this class");
 		}
 
-		List<DocumentSubmission> submissions = submissionRepository
-				.findByAssignmentIdAndCourseClassIdOrderByCreatedAtDesc(assignmentId, courseClassId);
-		Map<Long, List<DocumentSubmission>> submissionsBySubmitter = new LinkedHashMap<>();
-		for (DocumentSubmission submission : submissions) {
-			if (submission.getSubmittedBy() == null || submission.getSubmittedBy().getId() == null) {
+		List<SubmissionResponse> submissions = submissionQueryService
+				.findSubmissionsByTypeAndAssignmentAndClass(SubmissionType.DOCUMENT, assignmentId, courseClassId);
+		Map<Long, List<SubmissionResponse>> submissionsBySubmitter = new LinkedHashMap<>();
+		for (SubmissionResponse submission : submissions) {
+			if (submission.submittedById() == null) {
 				continue;
 			}
 			submissionsBySubmitter
-					.computeIfAbsent(submission.getSubmittedBy().getId(), ignored -> new ArrayList<>())
+					.computeIfAbsent(submission.submittedById(), ignored -> new ArrayList<>())
 					.add(submission);
 		}
 
@@ -145,7 +146,7 @@ class DocumentCompletenessServiceImpl implements DocumentCompletenessService {
 				.stream()
 				.map(groupedSubmissions -> buildReport(
 						assignment,
-						groupedSubmissions.get(0).getSubmittedBy(),
+						findUserById(groupedSubmissions.get(0).submittedById()),
 						null,
 						groupedSubmissions))
 				.toList();
@@ -174,11 +175,11 @@ class DocumentCompletenessServiceImpl implements DocumentCompletenessService {
 			DocumentRequirementSetAssignment assignment,
 			User submitter,
 			Project reportProject,
-			List<DocumentSubmission> submissions) {
+			List<SubmissionResponse> submissions) {
 		DocumentRequirementSet requirementSet = assignment.getRequirementSet();
 		List<DocumentRequirement> requirements = requirementRepository
 				.findByRequirementSetIdOrderBySortOrderAsc(requirementSet.getId());
-		Map<Long, DocumentSubmission> latestSubmissionByRequirement = latestSubmissionByRequirement(submissions);
+		Map<Long, SubmissionResponse> latestSubmissionByRequirement = latestSubmissionByRequirement(submissions);
 
 		List<String> blockingIssues = new ArrayList<>();
 		if (assignment.getStatus() != RequirementSetAssignmentStatus.ACTIVE) {
@@ -251,25 +252,25 @@ class DocumentCompletenessServiceImpl implements DocumentCompletenessService {
 
 	private DocumentRequirementCompletenessItemResponse buildRequirementItem(
 			DocumentRequirement requirement,
-			DocumentSubmission latestSubmission,
+			SubmissionResponse latestSubmission,
 			List<String> blockingIssues) {
 		List<String> issues = new ArrayList<>();
-		List<DocumentSubmissionFile> files = latestSubmission == null
+		List<SubmissionFileResponse> files = latestSubmission == null
 				? List.of()
-				: latestSubmission.getFiles()
+				: latestSubmission.files()
 						.stream()
-						.sorted(Comparator.comparing(file -> file.getId() == null ? 0L : file.getId()))
+						.sorted(Comparator.comparing(file -> file.id() == null ? 0L : file.id()))
 						.toList();
 
 		int uploadedFileCount = (int) files.stream()
-				.filter(file -> file.getFileStatus() == DocumentSubmissionFileStatus.UPLOADED)
+				.filter(file -> file.fileStatus() == SubmissionFileStatus.UPLOADED)
 				.count();
 		int validUploadedFileCount = (int) files.stream()
 				.filter(this::isValidUploadedFile)
 				.count();
 		boolean submitted = latestSubmission != null;
 		boolean statusSatisfied = latestSubmission != null
-				&& SATISFYING_SUBMISSION_STATUSES.contains(latestSubmission.getStatus());
+				&& SATISFYING_SUBMISSION_STATUSES.contains(latestSubmission.status());
 		boolean hasValidFiles = validUploadedFileCount > 0;
 		boolean satisfied = submitted && statusSatisfied && hasValidFiles;
 
@@ -292,10 +293,10 @@ class DocumentCompletenessServiceImpl implements DocumentCompletenessService {
 				requirement.getDescription(),
 				requirement.isRequired(),
 				requirement.getSortOrder(),
-				latestSubmission == null ? null : latestSubmission.getId(),
-				latestSubmission == null ? null : latestSubmission.getAttemptNumber(),
-				latestSubmission == null || latestSubmission.getStatus() == null
-						? null : latestSubmission.getStatus().name(),
+				latestSubmission == null ? null : latestSubmission.id(),
+				latestSubmission == null ? null : latestSubmission.attemptNumber(),
+				latestSubmission == null || latestSubmission.status() == null
+						? null : latestSubmission.status().name(),
 				uploadedFileCount,
 				validUploadedFileCount,
 				submitted,
@@ -308,21 +309,21 @@ class DocumentCompletenessServiceImpl implements DocumentCompletenessService {
 
 	private void addSubmissionIssues(
 			DocumentRequirement requirement,
-			DocumentSubmission latestSubmission,
+			SubmissionResponse latestSubmission,
 			List<String> issues,
 			int uploadedFileCount,
 			int validUploadedFileCount) {
-		if (latestSubmission.getStatus() == DocumentSubmissionStatus.DRAFT) {
+		if (latestSubmission.status() == SubmissionStatus.DRAFT) {
 			issues.add("Latest submission is still in draft: " + requirement.getName());
-		} else if (latestSubmission.getStatus() == DocumentSubmissionStatus.ARCHIVED) {
+		} else if (latestSubmission.status() == SubmissionStatus.ARCHIVED) {
 			issues.add("Latest submission is archived: " + requirement.getName());
-		} else if (!SATISFYING_SUBMISSION_STATUSES.contains(latestSubmission.getStatus())) {
+		} else if (!SATISFYING_SUBMISSION_STATUSES.contains(latestSubmission.status())) {
 			issues.add("Latest submission is not ready for evaluation: " + requirement.getName());
 		}
 
-		if (latestSubmission.getFiles() == null || latestSubmission.getFiles().isEmpty()) {
+		if (latestSubmission.files() == null || latestSubmission.files().isEmpty()) {
 			issues.add("Submitted document has no uploaded file: " + requirement.getName());
-		} else if (uploadedFileCount == 0 && allFilesInactive(latestSubmission.getFiles())) {
+		} else if (uploadedFileCount == 0 && allFilesInactive(latestSubmission.files())) {
 			issues.add("All uploaded files are invalid or removed: " + requirement.getName());
 		} else if (uploadedFileCount == 0) {
 			issues.add("Submitted document has no uploaded file: " + requirement.getName());
@@ -331,9 +332,9 @@ class DocumentCompletenessServiceImpl implements DocumentCompletenessService {
 		}
 	}
 
-	private boolean allFilesInactive(List<DocumentSubmissionFile> files) {
+	private boolean allFilesInactive(List<SubmissionFileResponse> files) {
 		return files.stream()
-				.allMatch(file -> INACTIVE_FILE_STATUSES.contains(file.getFileStatus()));
+				.allMatch(file -> INACTIVE_FILE_STATUSES.contains(file.fileStatus()));
 	}
 
 	private List<String> optionalIssues(Collection<String> issues) {
@@ -342,40 +343,39 @@ class DocumentCompletenessServiceImpl implements DocumentCompletenessService {
 				.toList();
 	}
 
-	private List<DocumentSubmissionFileSummaryResponse> toFileSummaries(List<DocumentSubmissionFile> files) {
+	private List<DocumentCompletenessFileSummaryResponse> toFileSummaries(List<SubmissionFileResponse> files) {
 		return files.stream()
-				.map(file -> new DocumentSubmissionFileSummaryResponse(
-						file.getId(),
-						file.getOriginalFileName(),
-						file.getContentType(),
-						file.getFileSize(),
-						file.getFileStatus() == null ? null : file.getFileStatus().name(),
-						file.getChecksum(),
-						file.getUploadedAt()))
+				.map(file -> new DocumentCompletenessFileSummaryResponse(
+						file.id(),
+						file.originalFileName(),
+						file.contentType(),
+						file.fileSize(),
+						file.fileStatus() == null ? null : file.fileStatus().name(),
+						file.checksum(),
+						file.uploadedAt()))
 				.toList();
 	}
 
-	private Map<Long, DocumentSubmission> latestSubmissionByRequirement(List<DocumentSubmission> submissions) {
-		Map<Long, DocumentSubmission> latest = new LinkedHashMap<>();
+	private Map<Long, SubmissionResponse> latestSubmissionByRequirement(List<SubmissionResponse> submissions) {
+		Map<Long, SubmissionResponse> latest = new LinkedHashMap<>();
 		submissions.stream()
-				.filter(submission -> submission.getDocumentRequirement() != null
-						&& submission.getDocumentRequirement().getId() != null)
+				.filter(submission -> submission.requirementId() != null)
 				.sorted(this::compareLatestSubmissionFirst)
 				.forEach(submission -> latest.putIfAbsent(
-						submission.getDocumentRequirement().getId(),
+						submission.requirementId(),
 						submission));
 		return latest;
 	}
 
-	private int compareLatestSubmissionFirst(DocumentSubmission left, DocumentSubmission right) {
+	private int compareLatestSubmissionFirst(SubmissionResponse left, SubmissionResponse right) {
 		int attemptComparison = Integer.compare(
-				right.getAttemptNumber() == null ? 0 : right.getAttemptNumber(),
-				left.getAttemptNumber() == null ? 0 : left.getAttemptNumber());
+				right.attemptNumber() == null ? 0 : right.attemptNumber(),
+				left.attemptNumber() == null ? 0 : left.attemptNumber());
 		if (attemptComparison != 0) {
 			return attemptComparison;
 		}
-		LocalDateTime rightUpdated = right.getLastUpdatedAt() == null ? right.getCreatedAt() : right.getLastUpdatedAt();
-		LocalDateTime leftUpdated = left.getLastUpdatedAt() == null ? left.getCreatedAt() : left.getLastUpdatedAt();
+		LocalDateTime rightUpdated = right.lastUpdatedAt();
+		LocalDateTime leftUpdated = left.lastUpdatedAt();
 		if (rightUpdated == null && leftUpdated == null) {
 			return 0;
 		}
@@ -388,10 +388,10 @@ class DocumentCompletenessServiceImpl implements DocumentCompletenessService {
 		return rightUpdated.compareTo(leftUpdated);
 	}
 
-	private boolean isValidUploadedFile(DocumentSubmissionFile file) {
-		return file.getFileStatus() == DocumentSubmissionFileStatus.UPLOADED
-				&& hasText(file.getOriginalFileName())
-				&& (hasText(file.getStoragePath()) || hasText(file.getStoredFileName()) || hasText(file.getFileUrl()));
+	private boolean isValidUploadedFile(SubmissionFileResponse file) {
+		return file.fileStatus() == SubmissionFileStatus.UPLOADED
+				&& hasText(file.originalFileName())
+				&& (hasText(file.storedFileName()) || hasText(file.fileUrl()));
 	}
 
 	private boolean hasText(String value) {
@@ -426,6 +426,11 @@ class DocumentCompletenessServiceImpl implements DocumentCompletenessService {
 
 	private User findUserByEmail(String email) {
 		return userRepository.findByEmail(email)
+				.orElseThrow(() -> new ResourceNotFoundException("User not found"));
+	}
+
+	private User findUserById(Long id) {
+		return userRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("User not found"));
 	}
 

@@ -1,23 +1,30 @@
 package com.blissfuljuan.aiprojecteval.documentevaluation.service;
 
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentCompletenessReportResponse;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.blissfuljuan.aiprojecteval.courseclass.model.CourseClass;
-import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentCompletenessReportResponse;
+
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.ConfigurationStatus;
-import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentSubmissionFileStatus;
-import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentSubmissionStatus;
+
+import com.blissfuljuan.aiprojecteval.submission.enums.SubmissionFileStatus;
+
+import com.blissfuljuan.aiprojecteval.submission.enums.SubmissionStatus;
+
+import com.blissfuljuan.aiprojecteval.submission.enums.SubmissionType;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.RequirementSetAssignmentStatus;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.RequirementSetAssignmentType;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirement;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirementSet;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirementSetAssignment;
-import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentSubmission;
-import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentSubmissionFile;
+import com.blissfuljuan.aiprojecteval.submission.model.Submission;
+import com.blissfuljuan.aiprojecteval.submission.model.SubmissionFile;
 import com.blissfuljuan.aiprojecteval.documentevaluation.repository.DocumentRequirementRepository;
 import com.blissfuljuan.aiprojecteval.documentevaluation.repository.DocumentRequirementSetAssignmentRepository;
-import com.blissfuljuan.aiprojecteval.documentevaluation.repository.DocumentSubmissionRepository;
+import com.blissfuljuan.aiprojecteval.submission.mapper.SubmissionMapper;
+import com.blissfuljuan.aiprojecteval.submission.service.SubmissionQueryService;
 import com.blissfuljuan.aiprojecteval.identity.model.Role;
 import com.blissfuljuan.aiprojecteval.identity.model.User;
 import com.blissfuljuan.aiprojecteval.identity.repository.UserRepository;
@@ -41,7 +48,7 @@ class DocumentCompletenessServiceImplTest {
 	private DocumentRequirementRepository requirementRepository;
 
 	@Mock
-	private DocumentSubmissionRepository submissionRepository;
+	private SubmissionQueryService submissionQueryService;
 
 	@Mock
 	private UserRepository userRepository;
@@ -56,7 +63,7 @@ class DocumentCompletenessServiceImplTest {
 		service = new DocumentCompletenessServiceImpl(
 				assignmentRepository,
 				requirementRepository,
-				submissionRepository,
+				submissionQueryService,
 				userRepository,
 				projectRepository);
 	}
@@ -84,7 +91,7 @@ class DocumentCompletenessServiceImplTest {
 		DocumentRequirement required = requirement(20L, requirementSet, "Project Proposal", true, 1);
 		DocumentRequirement optional = requirement(21L, requirementSet, "Appendix", false, 2);
 		DocumentRequirementSetAssignment assignment = classAssignment(30L, requirementSet, RequirementSetAssignmentStatus.ACTIVE);
-		DocumentSubmission submitted = submission(40L, student, assignment, required, DocumentSubmissionStatus.SUBMITTED, 1);
+		Submission submitted = submission(40L, student, assignment, required, SubmissionStatus.SUBMITTED, 1);
 		submitted.addFile(uploadedFile(70L, submitted));
 		stubMyReport(student, assignment, List.of(required, optional), List.of(submitted));
 
@@ -103,7 +110,7 @@ class DocumentCompletenessServiceImplTest {
 		DocumentRequirementSet requirementSet = requirementSet(10L, ConfigurationStatus.ACTIVE);
 		DocumentRequirement required = requirement(20L, requirementSet, "Project Proposal", true, 1);
 		DocumentRequirementSetAssignment assignment = classAssignment(30L, requirementSet, RequirementSetAssignmentStatus.ACTIVE);
-		DocumentSubmission draft = submission(40L, student, assignment, required, DocumentSubmissionStatus.DRAFT, 1);
+		Submission draft = submission(40L, student, assignment, required, SubmissionStatus.DRAFT, 1);
 		draft.addFile(uploadedFile(70L, draft));
 		stubMyReport(student, assignment, List.of(required), List.of(draft));
 
@@ -120,9 +127,9 @@ class DocumentCompletenessServiceImplTest {
 		DocumentRequirementSet requirementSet = requirementSet(10L, ConfigurationStatus.ACTIVE);
 		DocumentRequirement required = requirement(20L, requirementSet, "Project Proposal", true, 1);
 		DocumentRequirementSetAssignment assignment = classAssignment(30L, requirementSet, RequirementSetAssignmentStatus.ACTIVE);
-		DocumentSubmission submitted = submission(40L, student, assignment, required, DocumentSubmissionStatus.SUBMITTED, 1);
-		submitted.addFile(inactiveFile(70L, submitted, DocumentSubmissionFileStatus.REMOVED));
-		submitted.addFile(inactiveFile(71L, submitted, DocumentSubmissionFileStatus.INVALID));
+		Submission submitted = submission(40L, student, assignment, required, SubmissionStatus.SUBMITTED, 1);
+		submitted.addFile(inactiveFile(70L, submitted, SubmissionFileStatus.REMOVED));
+		submitted.addFile(inactiveFile(71L, submitted, SubmissionFileStatus.INVALID));
 		stubMyReport(student, assignment, List.of(required), List.of(submitted));
 
 		DocumentCompletenessReportResponse report = service.getMyCompletenessReport("student@example.com", 30L);
@@ -139,7 +146,7 @@ class DocumentCompletenessServiceImplTest {
 		DocumentRequirementSet requirementSet = requirementSet(10L, ConfigurationStatus.ACTIVE);
 		DocumentRequirement required = requirement(20L, requirementSet, "Project Proposal", true, 1);
 		DocumentRequirementSetAssignment assignment = classAssignment(30L, requirementSet, RequirementSetAssignmentStatus.ARCHIVED);
-		DocumentSubmission submitted = submission(40L, student, assignment, required, DocumentSubmissionStatus.SUBMITTED, 1);
+		Submission submitted = submission(40L, student, assignment, required, SubmissionStatus.SUBMITTED, 1);
 		submitted.addFile(uploadedFile(70L, submitted));
 		stubMyReport(student, assignment, List.of(required), List.of(submitted));
 
@@ -154,14 +161,15 @@ class DocumentCompletenessServiceImplTest {
 			User student,
 			DocumentRequirementSetAssignment assignment,
 			List<DocumentRequirement> requirements,
-			List<DocumentSubmission> submissions) {
+			List<Submission> submissions) {
 		when(userRepository.findByEmail(student.getEmail())).thenReturn(Optional.of(student));
 		when(assignmentRepository.findById(assignment.getId())).thenReturn(Optional.of(assignment));
 		when(requirementRepository.findByRequirementSetIdOrderBySortOrderAsc(assignment.getRequirementSet().getId()))
 				.thenReturn(requirements);
-		when(submissionRepository.findByAssignmentIdAndSubmittedByIdOrderByCreatedAtDesc(
+		when(submissionQueryService.findSubmissionsByTypeAndAssignmentAndSubmitter(
+				SubmissionType.DOCUMENT,
 				assignment.getId(),
-				student.getId())).thenReturn(submissions);
+				student.getId())).thenReturn(submissions.stream().map(SubmissionMapper::toResponse).toList());
 	}
 
 	private User user(Long id, String email, Role role) {
@@ -206,19 +214,20 @@ class DocumentCompletenessServiceImplTest {
 		return assignment;
 	}
 
-	private DocumentSubmission submission(
+	private Submission submission(
 			Long id,
 			User submittedBy,
 			DocumentRequirementSetAssignment assignment,
 			DocumentRequirement requirement,
-			DocumentSubmissionStatus status,
+			SubmissionStatus status,
 			Integer attemptNumber) {
-		DocumentSubmission submission = new DocumentSubmission();
+		Submission submission = new Submission();
+		submission.setType(SubmissionType.DOCUMENT);
 		submission.setId(id);
 		submission.setSubmittedBy(submittedBy);
-		submission.setAssignment(assignment);
-		submission.setDocumentRequirement(requirement);
-		submission.setCourseClass(assignment.getCourseClass());
+		submission.setAssignmentId(assignment.getId());
+		submission.setRequirementId(requirement.getId());
+		submission.setCourseClassId(assignment.getCourseClass() == null ? null : assignment.getCourseClass().getId());
 		submission.setStatus(status);
 		submission.setSubmissionTitle(requirement.getName());
 		submission.setAttemptNumber(attemptNumber);
@@ -226,19 +235,19 @@ class DocumentCompletenessServiceImplTest {
 		return submission;
 	}
 
-	private DocumentSubmissionFile uploadedFile(Long id, DocumentSubmission submission) {
-		DocumentSubmissionFile file = inactiveFile(id, submission, DocumentSubmissionFileStatus.UPLOADED);
+	private SubmissionFile uploadedFile(Long id, Submission submission) {
+		SubmissionFile file = inactiveFile(id, submission, SubmissionFileStatus.UPLOADED);
 		file.setStoredFileName("stored-" + id + ".pdf");
 		file.setStoragePath("uploads/stored-" + id + ".pdf");
 		file.setUploadedAt(LocalDateTime.now());
 		return file;
 	}
 
-	private DocumentSubmissionFile inactiveFile(
+	private SubmissionFile inactiveFile(
 			Long id,
-			DocumentSubmission submission,
-			DocumentSubmissionFileStatus status) {
-		DocumentSubmissionFile file = new DocumentSubmissionFile();
+			Submission submission,
+			SubmissionFileStatus status) {
+		SubmissionFile file = new SubmissionFile();
 		file.setId(id);
 		file.setSubmission(submission);
 		file.setOriginalFileName("project-proposal.pdf");

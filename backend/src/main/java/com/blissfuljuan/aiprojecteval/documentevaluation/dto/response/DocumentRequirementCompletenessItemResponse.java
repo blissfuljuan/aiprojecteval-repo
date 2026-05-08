@@ -18,6 +18,6 @@ public record DocumentRequirementCompletenessItemResponse(
 		boolean satisfied,
 		boolean blocking,
 		List<String> issues,
-		List<DocumentSubmissionFileSummaryResponse> files
+		List<DocumentCompletenessFileSummaryResponse> files
 ) {
 }

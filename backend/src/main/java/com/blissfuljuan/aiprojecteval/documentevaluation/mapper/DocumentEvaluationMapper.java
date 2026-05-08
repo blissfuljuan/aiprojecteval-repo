@@ -16,7 +16,6 @@ import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentEvaluatio
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirement;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirementSet;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirementSetAssignment;
-import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentSubmission;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.RubricCriterion;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.RubricLevel;
 import com.blissfuljuan.aiprojecteval.identity.model.User;
@@ -29,7 +28,6 @@ public final class DocumentEvaluationMapper {
 	}
 
 	public static DocumentEvaluationResponse toResponse(DocumentEvaluation evaluation) {
-		DocumentSubmission submission = evaluation.getSubmission();
 		DocumentRequirementSetAssignment assignment = evaluation.getAssignment();
 		DocumentRequirementSet requirementSet = evaluation.getRequirementSet();
 		DocumentRequirement requirement = evaluation.getDocumentRequirement();
@@ -40,7 +38,7 @@ public final class DocumentEvaluationMapper {
 
 		return new DocumentEvaluationResponse(
 				evaluation.getId(),
-				submission == null ? null : submission.getId(),
+				evaluation.getSubmissionId(),
 				assignment == null ? null : assignment.getId(),
 				requirementSet == null ? null : requirementSet.getId(),
 				requirementSet == null ? null : requirementSet.getName(),
@@ -79,14 +77,13 @@ public final class DocumentEvaluationMapper {
 	}
 
 	public static DocumentEvaluationSummaryResponse toSummaryResponse(DocumentEvaluation evaluation) {
-		DocumentSubmission submission = evaluation.getSubmission();
 		DocumentRequirement requirement = evaluation.getDocumentRequirement();
 		User submittedBy = evaluation.getSubmittedBy();
 		User evaluatedBy = evaluation.getEvaluatedBy();
 
 		return new DocumentEvaluationSummaryResponse(
 				evaluation.getId(),
-				submission == null ? null : submission.getId(),
+				evaluation.getSubmissionId(),
 				requirement == null ? null : requirement.getId(),
 				requirement == null ? null : requirement.getName(),
 				submittedBy == null ? null : submittedBy.getId(),
@@ -122,7 +119,6 @@ public final class DocumentEvaluationMapper {
 	}
 
 	public static StudentEvaluationResultResponse toStudentResultResponse(DocumentEvaluation evaluation) {
-		DocumentSubmission submission = evaluation.getSubmission();
 		DocumentRequirementSetAssignment assignment = evaluation.getAssignment();
 		DocumentRequirementSet requirementSet = evaluation.getRequirementSet();
 		DocumentRequirement requirement = evaluation.getDocumentRequirement();
@@ -131,7 +127,7 @@ public final class DocumentEvaluationMapper {
 
 		return new StudentEvaluationResultResponse(
 				evaluation.getId(),
-				submission == null ? null : submission.getId(),
+				evaluation.getSubmissionId(),
 				assignment == null ? null : assignment.getId(),
 				requirementSet == null ? null : requirementSet.getId(),
 				requirementSet == null ? null : requirementSet.getName(),
@@ -169,12 +165,11 @@ public final class DocumentEvaluationMapper {
 	}
 
 	public static StudentEvaluationResultSummaryResponse toStudentResultSummaryResponse(DocumentEvaluation evaluation) {
-		DocumentSubmission submission = evaluation.getSubmission();
 		DocumentRequirement requirement = evaluation.getDocumentRequirement();
 
 		return new StudentEvaluationResultSummaryResponse(
 				evaluation.getId(),
-				submission == null ? null : submission.getId(),
+				evaluation.getSubmissionId(),
 				requirement == null ? null : requirement.getId(),
 				requirement == null ? null : requirement.getName(),
 				evaluation.getStatus() == null ? null : evaluation.getStatus().name(),

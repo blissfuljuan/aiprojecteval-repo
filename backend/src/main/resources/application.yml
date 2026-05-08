@@ -22,8 +22,8 @@ app:
     secret: ${JWT_SECRET:replace-this-with-a-long-development-secret-key-at-least-32-characters}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
-document-evaluation:
+submission:
   storage:
-    provider: ${DOCUMENT_EVALUATION_STORAGE_PROVIDER:local}
-    local-root: ${DOCUMENT_EVALUATION_STORAGE_LOCAL_ROOT:uploads/document-evaluation}
-    max-file-size: ${DOCUMENT_EVALUATION_STORAGE_MAX_FILE_SIZE:10485760}
+    provider: ${SUBMISSION_STORAGE_PROVIDER:${DOCUMENT_EVALUATION_STORAGE_PROVIDER:local}}
+    local-root: ${SUBMISSION_STORAGE_LOCAL_ROOT:${DOCUMENT_EVALUATION_STORAGE_LOCAL_ROOT:uploads/submissions}}
+    max-file-size: ${SUBMISSION_STORAGE_MAX_FILE_SIZE:${DOCUMENT_EVALUATION_STORAGE_MAX_FILE_SIZE:10485760}}

@@ -20,8 +20,6 @@ import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.StudentEva
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.StudentEvaluationResultSummaryResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentEvaluationFindingType;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentEvaluationStatus;
-import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentSubmissionFileStatus;
-import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentSubmissionStatus;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.RequirementSetAssignmentStatus;
 import com.blissfuljuan.aiprojecteval.documentevaluation.mapper.DocumentEvaluationMapper;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentEvaluation;
@@ -30,8 +28,6 @@ import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentEvaluatio
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirement;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirementSet;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirementSetAssignment;
-import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentSubmission;
-import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentSubmissionFile;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.EvaluationRubric;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.RubricCriterion;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.RubricLevel;
@@ -39,13 +35,17 @@ import com.blissfuljuan.aiprojecteval.documentevaluation.repository.DocumentEval
 import com.blissfuljuan.aiprojecteval.documentevaluation.repository.DocumentEvaluationFindingRepository;
 import com.blissfuljuan.aiprojecteval.documentevaluation.repository.DocumentEvaluationRepository;
 import com.blissfuljuan.aiprojecteval.documentevaluation.repository.DocumentRequirementSetAssignmentRepository;
-import com.blissfuljuan.aiprojecteval.documentevaluation.repository.DocumentSubmissionFileRepository;
-import com.blissfuljuan.aiprojecteval.documentevaluation.repository.DocumentSubmissionRepository;
 import com.blissfuljuan.aiprojecteval.documentevaluation.repository.RubricCriterionRepository;
 import com.blissfuljuan.aiprojecteval.documentevaluation.repository.RubricLevelRepository;
 import com.blissfuljuan.aiprojecteval.identity.model.Role;
 import com.blissfuljuan.aiprojecteval.identity.model.User;
 import com.blissfuljuan.aiprojecteval.identity.repository.UserRepository;
+import com.blissfuljuan.aiprojecteval.submission.enums.SubmissionFileStatus;
+import com.blissfuljuan.aiprojecteval.submission.enums.SubmissionStatus;
+import com.blissfuljuan.aiprojecteval.submission.enums.SubmissionType;
+import com.blissfuljuan.aiprojecteval.submission.model.Submission;
+import com.blissfuljuan.aiprojecteval.submission.model.SubmissionFile;
+import com.blissfuljuan.aiprojecteval.submission.service.SubmissionQueryService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
@@ -59,10 +59,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 class DocumentEvaluationServiceImpl implements DocumentEvaluationService {
 
-	private static final Set<DocumentSubmissionStatus> EVALUATABLE_SUBMISSION_STATUSES = Set.of(
-			DocumentSubmissionStatus.SUBMITTED,
-			DocumentSubmissionStatus.RESUBMITTED,
-			DocumentSubmissionStatus.ACCEPTED);
+	private static final Set<SubmissionStatus> EVALUATABLE_SUBMISSION_STATUSES = Set.of(
+			SubmissionStatus.SUBMITTED,
+			SubmissionStatus.RESUBMITTED,
+			SubmissionStatus.ACCEPTED);
 	private static final Set<DocumentEvaluationStatus> EDITABLE_STATUSES = Set.of(
 			DocumentEvaluationStatus.DRAFT,
 			DocumentEvaluationStatus.IN_PROGRESS);
@@ -74,8 +74,7 @@ class DocumentEvaluationServiceImpl implements DocumentEvaluationService {
 	private final DocumentEvaluationCriterionScoreRepository criterionScoreRepository;
 	private final DocumentEvaluationFindingRepository findingRepository;
 	private final DocumentRequirementSetAssignmentRepository assignmentRepository;
-	private final DocumentSubmissionRepository submissionRepository;
-	private final DocumentSubmissionFileRepository fileRepository;
+	private final SubmissionQueryService submissionQueryService;
 	private final RubricCriterionRepository criterionRepository;
 	private final RubricLevelRepository levelRepository;
 	private final UserRepository userRepository;
@@ -85,8 +84,7 @@ class DocumentEvaluationServiceImpl implements DocumentEvaluationService {
 			DocumentEvaluationCriterionScoreRepository criterionScoreRepository,
 			DocumentEvaluationFindingRepository findingRepository,
 			DocumentRequirementSetAssignmentRepository assignmentRepository,
-			DocumentSubmissionRepository submissionRepository,
-			DocumentSubmissionFileRepository fileRepository,
+			SubmissionQueryService submissionQueryService,
 			RubricCriterionRepository criterionRepository,
 			RubricLevelRepository levelRepository,
 			UserRepository userRepository) {
@@ -94,8 +92,7 @@ class DocumentEvaluationServiceImpl implements DocumentEvaluationService {
 		this.criterionScoreRepository = criterionScoreRepository;
 		this.findingRepository = findingRepository;
 		this.assignmentRepository = assignmentRepository;
-		this.submissionRepository = submissionRepository;
-		this.fileRepository = fileRepository;
+		this.submissionQueryService = submissionQueryService;
 		this.criterionRepository = criterionRepository;
 		this.levelRepository = levelRepository;
 		this.userRepository = userRepository;
@@ -105,7 +102,7 @@ class DocumentEvaluationServiceImpl implements DocumentEvaluationService {
 	@Transactional
 	public DocumentEvaluationResponse startEvaluation(String currentUserEmail, StartDocumentEvaluationRequest request) {
 		User currentUser = findUserByEmail(currentUserEmail);
-		DocumentSubmission submission = findSubmission(request.submissionId());
+		Submission submission = findSubmission(request.submissionId());
 		checkCanEvaluateSubmission(currentUser, submission);
 		validateSubmissionCanBeEvaluated(submission);
 
@@ -117,18 +114,25 @@ class DocumentEvaluationServiceImpl implements DocumentEvaluationService {
 				});
 
 		DocumentEvaluation evaluation = new DocumentEvaluation();
-		evaluation.setSubmission(submission);
-		evaluation.setAssignment(submission.getAssignment());
-		evaluation.setDocumentRequirement(submission.getDocumentRequirement());
-		evaluation.setRequirementSet(submission.getAssignment().getRequirementSet());
-		evaluation.setProject(submission.getProject());
-		evaluation.setCourseClass(submission.getCourseClass());
+		DocumentRequirementSetAssignment assignment = findAssignment(submission.getAssignmentId());
+		DocumentRequirement requirement = assignment.getRequirementSet().getDocumentRequirements()
+				.stream()
+				.filter(item -> item.getId().equals(submission.getRequirementId()))
+				.findFirst()
+				.orElseThrow(() -> new ResourceNotFoundException("Document requirement not found"));
+
+		evaluation.setSubmissionId(submission.getId());
+		evaluation.setAssignment(assignment);
+		evaluation.setDocumentRequirement(requirement);
+		evaluation.setRequirementSet(assignment.getRequirementSet());
+		evaluation.setProject(assignment.getProject());
+		evaluation.setCourseClass(assignment.getCourseClass());
 		evaluation.setEvaluatedBy(currentUser);
 		evaluation.setSubmittedBy(submission.getSubmittedBy());
 		evaluation.setStatus(DocumentEvaluationStatus.DRAFT);
 		evaluation.setStartedAt(LocalDateTime.now());
 
-		EvaluationRubric rubric = submission.getDocumentRequirement().getRubric();
+		EvaluationRubric rubric = requirement.getRubric();
 		if (rubric != null) {
 			rubric.getCriteria().stream()
 					.sorted((left, right) -> left.getSortOrder().compareTo(right.getSortOrder()))
@@ -370,10 +374,6 @@ class DocumentEvaluationServiceImpl implements DocumentEvaluationService {
 		recalculateScores(evaluation);
 		evaluation.setStatus(DocumentEvaluationStatus.RETURNED);
 		evaluation.setReturnedAt(LocalDateTime.now());
-		if (evaluation.getSubmission().getStatus() != DocumentSubmissionStatus.ARCHIVED) {
-			evaluation.getSubmission().setStatus(DocumentSubmissionStatus.RETURNED);
-		}
-
 		return DocumentEvaluationMapper.toResponse(evaluationRepository.save(evaluation));
 	}
 
@@ -573,18 +573,26 @@ class DocumentEvaluationServiceImpl implements DocumentEvaluationService {
 		criterionScore.setFinding(trimToNull(request.finding()));
 	}
 
-	private void validateSubmissionCanBeEvaluated(DocumentSubmission submission) {
+	private void validateSubmissionCanBeEvaluated(Submission submission) {
+		if (submission.getType() != SubmissionType.DOCUMENT) {
+			throw new BadRequestException("Only document submissions can be evaluated");
+		}
 		if (!EVALUATABLE_SUBMISSION_STATUSES.contains(submission.getStatus())) {
 			throw new BadRequestException("Only submitted, resubmitted, or accepted submissions can be evaluated");
 		}
-		if (submission.getAssignment() == null || submission.getDocumentRequirement() == null) {
+		if (submission.getAssignmentId() == null || submission.getRequirementId() == null) {
 			throw new BadRequestException("Submission must be linked to an assignment and document requirement");
 		}
-		if (submission.getAssignment().getStatus() != RequirementSetAssignmentStatus.ACTIVE) {
+		DocumentRequirementSetAssignment assignment = findAssignment(submission.getAssignmentId());
+		if (assignment.getStatus() != RequirementSetAssignmentStatus.ACTIVE) {
 			throw new BadRequestException("Only active requirement set assignments can be evaluated");
 		}
-		DocumentRequirementSet requirementSet = submission.getAssignment().getRequirementSet();
-		DocumentRequirement requirement = submission.getDocumentRequirement();
+		DocumentRequirementSet requirementSet = assignment.getRequirementSet();
+		DocumentRequirement requirement = requirementSet.getDocumentRequirements()
+				.stream()
+				.filter(item -> item.getId().equals(submission.getRequirementId()))
+				.findFirst()
+				.orElseThrow(() -> new BadRequestException("Document requirement does not belong to the assigned requirement set"));
 		if (requirement.getRequirementSet() == null
 				|| requirementSet == null
 				|| !requirement.getRequirementSet().getId().equals(requirementSet.getId())) {
@@ -595,16 +603,14 @@ class DocumentEvaluationServiceImpl implements DocumentEvaluationService {
 		}
 	}
 
-	private boolean hasValidUploadedFile(DocumentSubmission submission) {
-		return fileRepository
-				.findBySubmissionIdAndFileStatusInOrderByCreatedAtAsc(
-						submission.getId(),
-						Set.of(DocumentSubmissionFileStatus.UPLOADED))
+	private boolean hasValidUploadedFile(Submission submission) {
+		return submission.getFiles()
 				.stream()
+				.filter(file -> file.getFileStatus() == SubmissionFileStatus.UPLOADED)
 				.anyMatch(this::hasUsableFileReference);
 	}
 
-	private boolean hasUsableFileReference(DocumentSubmissionFile file) {
+	private boolean hasUsableFileReference(SubmissionFile file) {
 		return hasText(file.getOriginalFileName())
 				&& (hasText(file.getStoragePath()) || hasText(file.getStoredFileName()) || hasText(file.getFileUrl()));
 	}
@@ -710,8 +716,8 @@ class DocumentEvaluationServiceImpl implements DocumentEvaluationService {
 		throw new AccessDeniedException("Access denied");
 	}
 
-	private void checkCanEvaluateSubmission(User currentUser, DocumentSubmission submission) {
-		if (canManageAssignment(currentUser, submission.getAssignment())) {
+	private void checkCanEvaluateSubmission(User currentUser, Submission submission) {
+		if (canManageAssignment(currentUser, findAssignment(submission.getAssignmentId()))) {
 			return;
 		}
 		throw new AccessDeniedException("Access denied");
@@ -807,6 +813,11 @@ class DocumentEvaluationServiceImpl implements DocumentEvaluationService {
 				.orElseThrow(() -> new ResourceNotFoundException("Document evaluation not found"));
 	}
 
+	private DocumentRequirementSetAssignment findAssignment(Long id) {
+		return assignmentRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Requirement set assignment not found"));
+	}
+
 	private DocumentEvaluationCriterionScore findCriterionScore(Long id) {
 		return criterionScoreRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Criterion score not found"));
@@ -817,9 +828,8 @@ class DocumentEvaluationServiceImpl implements DocumentEvaluationService {
 				.orElseThrow(() -> new ResourceNotFoundException("Evaluation finding not found"));
 	}
 
-	private DocumentSubmission findSubmission(Long id) {
-		return submissionRepository.findById(id)
-				.orElseThrow(() -> new ResourceNotFoundException("Document submission not found"));
+	private Submission findSubmission(Long id) {
+		return submissionQueryService.getSubmissionEntityById(id);
 	}
 
 	private User findUserByEmail(String email) {

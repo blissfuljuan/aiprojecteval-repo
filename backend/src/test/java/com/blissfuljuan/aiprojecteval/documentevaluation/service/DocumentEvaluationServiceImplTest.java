@@ -1,5 +1,9 @@
 package com.blissfuljuan.aiprojecteval.documentevaluation.service;
 
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.StudentEvaluationResultSummaryResponse;
+
+import com.blissfuljuan.aiprojecteval.common.exception.BadRequestException;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -7,7 +11,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.blissfuljuan.aiprojecteval.common.exception.BadRequestException;
+
+import com.blissfuljuan.aiprojecteval.documentevaluation.enums.ConfigurationStatus;
 import com.blissfuljuan.aiprojecteval.common.exception.ResourceNotFoundException;
 import com.blissfuljuan.aiprojecteval.courseclass.model.CourseClass;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.CompleteDocumentEvaluationRequest;
@@ -19,12 +24,16 @@ import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.UpdateCrite
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentEvaluationResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.EvaluationPublicationStatusResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.StudentEvaluationResultResponse;
-import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.StudentEvaluationResultSummaryResponse;
-import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentEvaluationFindingType;
+
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.ConfigurationStatus;
+import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentEvaluationFindingType;
+
+import com.blissfuljuan.aiprojecteval.submission.enums.SubmissionFileStatus;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentEvaluationStatus;
-import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentSubmissionFileStatus;
-import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentSubmissionStatus;
+
+import com.blissfuljuan.aiprojecteval.submission.enums.SubmissionStatus;
+
+import com.blissfuljuan.aiprojecteval.submission.enums.SubmissionType;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.RequirementSetAssignmentStatus;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.RequirementSetAssignmentType;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.RubricScoringType;
@@ -34,8 +43,8 @@ import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentEvaluatio
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirement;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirementSet;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirementSetAssignment;
-import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentSubmission;
-import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentSubmissionFile;
+import com.blissfuljuan.aiprojecteval.submission.model.Submission;
+import com.blissfuljuan.aiprojecteval.submission.model.SubmissionFile;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.EvaluationRubric;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.RubricCriterion;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.RubricLevel;
@@ -43,8 +52,7 @@ import com.blissfuljuan.aiprojecteval.documentevaluation.repository.DocumentEval
 import com.blissfuljuan.aiprojecteval.documentevaluation.repository.DocumentEvaluationFindingRepository;
 import com.blissfuljuan.aiprojecteval.documentevaluation.repository.DocumentEvaluationRepository;
 import com.blissfuljuan.aiprojecteval.documentevaluation.repository.DocumentRequirementSetAssignmentRepository;
-import com.blissfuljuan.aiprojecteval.documentevaluation.repository.DocumentSubmissionFileRepository;
-import com.blissfuljuan.aiprojecteval.documentevaluation.repository.DocumentSubmissionRepository;
+import com.blissfuljuan.aiprojecteval.submission.service.SubmissionQueryService;
 import com.blissfuljuan.aiprojecteval.documentevaluation.repository.RubricCriterionRepository;
 import com.blissfuljuan.aiprojecteval.documentevaluation.repository.RubricLevelRepository;
 import com.blissfuljuan.aiprojecteval.identity.model.Role;
@@ -78,10 +86,7 @@ class DocumentEvaluationServiceImplTest {
 	private DocumentRequirementSetAssignmentRepository assignmentRepository;
 
 	@Mock
-	private DocumentSubmissionRepository submissionRepository;
-
-	@Mock
-	private DocumentSubmissionFileRepository fileRepository;
+	private SubmissionQueryService submissionQueryService;
 
 	@Mock
 	private RubricCriterionRepository criterionRepository;
@@ -101,8 +106,7 @@ class DocumentEvaluationServiceImplTest {
 				criterionScoreRepository,
 				findingRepository,
 				assignmentRepository,
-				submissionRepository,
-				fileRepository,
+				submissionQueryService,
 				criterionRepository,
 				levelRepository,
 				userRepository);
@@ -121,7 +125,7 @@ class DocumentEvaluationServiceImplTest {
 		rubric.addCriterion(criterionTwo);
 		requirement.setRubric(rubric);
 		DocumentRequirementSetAssignment assignment = classAssignment(40L, requirementSet);
-		DocumentSubmission submission = submission(50L, student, assignment, requirement, DocumentSubmissionStatus.SUBMITTED);
+		Submission submission = submission(50L, student, assignment, requirement, SubmissionStatus.SUBMITTED);
 		stubStartEvaluation(instructor, submission, List.of(uploadedFile(60L, submission)), false);
 		when(evaluationRepository.save(any(DocumentEvaluation.class))).thenAnswer(invocation -> {
 			DocumentEvaluation evaluation = invocation.getArgument(0);
@@ -149,9 +153,9 @@ class DocumentEvaluationServiceImplTest {
 		DocumentRequirementSet requirementSet = requirementSet(10L, instructor);
 		DocumentRequirement requirement = requirement(20L, requirementSet);
 		DocumentRequirementSetAssignment assignment = classAssignment(40L, requirementSet);
-		DocumentSubmission submission = submission(50L, student, assignment, requirement, DocumentSubmissionStatus.DRAFT);
+		Submission submission = submission(50L, student, assignment, requirement, SubmissionStatus.DRAFT);
 		when(userRepository.findByEmail("instructor@example.com")).thenReturn(Optional.of(instructor));
-		when(submissionRepository.findById(50L)).thenReturn(Optional.of(submission));
+		when(submissionQueryService.getSubmissionEntityById(50L)).thenReturn(submission);
 
 		assertThatThrownBy(() -> service.startEvaluation(
 				"instructor@example.com",
@@ -169,7 +173,7 @@ class DocumentEvaluationServiceImplTest {
 		DocumentRequirementSet requirementSet = requirementSet(10L, instructor);
 		DocumentRequirement requirement = requirement(20L, requirementSet);
 		DocumentRequirementSetAssignment assignment = classAssignment(40L, requirementSet);
-		DocumentSubmission submission = submission(50L, student, assignment, requirement, DocumentSubmissionStatus.SUBMITTED);
+		Submission submission = submission(50L, student, assignment, requirement, SubmissionStatus.SUBMITTED);
 		stubStartEvaluation(instructor, submission, List.of(), false);
 
 		assertThatThrownBy(() -> service.startEvaluation(
@@ -186,7 +190,7 @@ class DocumentEvaluationServiceImplTest {
 		DocumentRequirementSet requirementSet = requirementSet(10L, instructor);
 		DocumentRequirement requirement = requirement(20L, requirementSet);
 		DocumentRequirementSetAssignment assignment = classAssignment(40L, requirementSet);
-		DocumentSubmission submission = submission(50L, student, assignment, requirement, DocumentSubmissionStatus.SUBMITTED);
+		Submission submission = submission(50L, student, assignment, requirement, SubmissionStatus.SUBMITTED);
 		stubStartEvaluation(instructor, submission, List.of(uploadedFile(60L, submission)), true);
 
 		assertThatThrownBy(() -> service.startEvaluation(
@@ -327,7 +331,6 @@ class DocumentEvaluationServiceImplTest {
 
 		assertThat(response.status()).isEqualTo("RETURNED");
 		assertThat(response.returnedAt()).isNotNull();
-		assertThat(evaluation.getSubmission().getStatus()).isEqualTo(DocumentSubmissionStatus.RETURNED);
 	}
 
 	@Test
@@ -580,23 +583,25 @@ class DocumentEvaluationServiceImplTest {
 
 	private void stubStartEvaluation(
 			User instructor,
-			DocumentSubmission submission,
-			List<DocumentSubmissionFile> files,
+			Submission submission,
+			List<SubmissionFile> files,
 			boolean duplicateExists) {
 		when(userRepository.findByEmail(instructor.getEmail())).thenReturn(Optional.of(instructor));
-		when(submissionRepository.findById(submission.getId())).thenReturn(Optional.of(submission));
-		when(fileRepository.findBySubmissionIdAndFileStatusInOrderByCreatedAtAsc(
-				submission.getId(),
-				Set.of(DocumentSubmissionFileStatus.UPLOADED))).thenReturn(files);
+		when(submissionQueryService.getSubmissionEntityById(submission.getId())).thenReturn(submission);
+		files.forEach(submission::addFile);
 		if (files.isEmpty()) {
 			return;
 		}
 		if (duplicateExists) {
+			DocumentRequirementSetAssignment assignment = assignmentRepository.findById(submission.getAssignmentId())
+					.orElseThrow();
+			DocumentRequirement requirement = assignment.getRequirementSet().getDocumentRequirements().get(0);
 			when(evaluationRepository.findBySubmissionIdAndStatusNot(
 					submission.getId(),
 					DocumentEvaluationStatus.ARCHIVED))
 					.thenReturn(Optional.of(evaluation(80L, instructor, submission.getSubmittedBy(),
-							submission.getAssignment(), submission.getDocumentRequirement())));
+							assignment,
+							requirement)));
 		}
 		else {
 			when(evaluationRepository.findBySubmissionIdAndStatusNot(
@@ -621,7 +626,7 @@ class DocumentEvaluationServiceImplTest {
 	private DocumentRequirement requirement(Long id, DocumentRequirementSet requirementSet) {
 		DocumentRequirement requirement = new DocumentRequirement("Project Document", 1);
 		requirement.setId(id);
-		requirement.setRequirementSet(requirementSet);
+		requirementSet.addDocumentRequirement(requirement);
 		return requirement;
 	}
 
@@ -638,33 +643,35 @@ class DocumentEvaluationServiceImplTest {
 		return assignment;
 	}
 
-	private DocumentSubmission submission(
+	private Submission submission(
 			Long id,
 			User student,
 			DocumentRequirementSetAssignment assignment,
 			DocumentRequirement requirement,
-			DocumentSubmissionStatus status) {
-		DocumentSubmission submission = new DocumentSubmission();
+			SubmissionStatus status) {
+		Submission submission = new Submission();
+		submission.setType(SubmissionType.DOCUMENT);
 		submission.setId(id);
 		submission.setSubmittedBy(student);
-		submission.setAssignment(assignment);
-		submission.setDocumentRequirement(requirement);
-		submission.setCourseClass(assignment.getCourseClass());
+		submission.setAssignmentId(assignment.getId());
+		submission.setRequirementId(requirement.getId());
+		submission.setCourseClassId(assignment.getCourseClass() == null ? null : assignment.getCourseClass().getId());
 		submission.setStatus(status);
 		submission.setSubmissionTitle("Project Document");
 		submission.setAttemptNumber(1);
 		submission.setSubmittedAt(LocalDateTime.now());
 		submission.setLastUpdatedAt(LocalDateTime.now());
+		org.mockito.Mockito.lenient().when(assignmentRepository.findById(assignment.getId())).thenReturn(Optional.of(assignment));
 		return submission;
 	}
 
-	private DocumentSubmissionFile uploadedFile(Long id, DocumentSubmission submission) {
-		DocumentSubmissionFile file = new DocumentSubmissionFile();
+	private SubmissionFile uploadedFile(Long id, Submission submission) {
+		SubmissionFile file = new SubmissionFile();
 		file.setId(id);
 		file.setSubmission(submission);
 		file.setOriginalFileName("document.pdf");
 		file.setStoragePath("uploads/document.pdf");
-		file.setFileStatus(DocumentSubmissionFileStatus.UPLOADED);
+		file.setFileStatus(SubmissionFileStatus.UPLOADED);
 		return file;
 	}
 
@@ -708,10 +715,9 @@ class DocumentEvaluationServiceImplTest {
 			User student,
 			DocumentRequirementSetAssignment assignment,
 			DocumentRequirement requirement) {
-		DocumentSubmission submission = submission(50L, student, assignment, requirement, DocumentSubmissionStatus.SUBMITTED);
 		DocumentEvaluation evaluation = new DocumentEvaluation();
 		evaluation.setId(id);
-		evaluation.setSubmission(submission);
+		evaluation.setSubmissionId(50L);
 		evaluation.setAssignment(assignment);
 		evaluation.setRequirementSet(assignment.getRequirementSet());
 		evaluation.setDocumentRequirement(requirement);
