@@ -5,14 +5,19 @@ import com.blissfuljuan.aiprojecteval.common.exception.ResourceNotFoundException
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.AddDocumentEvaluationFindingRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.BulkUpdateCriterionScoresRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.CompleteDocumentEvaluationRequest;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.PublishDocumentEvaluationRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.ReturnDocumentEvaluationRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.StartDocumentEvaluationRequest;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.UnpublishDocumentEvaluationRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.UpdateCriterionScoreRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.UpdateDocumentEvaluationFeedbackRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.UpdateDocumentEvaluationFindingRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentEvaluationFindingResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentEvaluationResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentEvaluationSummaryResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.EvaluationPublicationStatusResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.StudentEvaluationResultResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.StudentEvaluationResultSummaryResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentEvaluationFindingType;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentEvaluationStatus;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentSubmissionFileStatus;
@@ -61,6 +66,9 @@ class DocumentEvaluationServiceImpl implements DocumentEvaluationService {
 	private static final Set<DocumentEvaluationStatus> EDITABLE_STATUSES = Set.of(
 			DocumentEvaluationStatus.DRAFT,
 			DocumentEvaluationStatus.IN_PROGRESS);
+	private static final List<DocumentEvaluationStatus> RELEASED_RESULT_STATUSES = List.of(
+			DocumentEvaluationStatus.COMPLETED,
+			DocumentEvaluationStatus.RETURNED);
 
 	private final DocumentEvaluationRepository evaluationRepository;
 	private final DocumentEvaluationCriterionScoreRepository criterionScoreRepository;
@@ -175,6 +183,15 @@ class DocumentEvaluationServiceImpl implements DocumentEvaluationService {
 	@Transactional(readOnly = true)
 	public List<DocumentEvaluationSummaryResponse> getMySubmittedEvaluations(String currentUserEmail) {
 		User currentUser = findUserByEmail(currentUserEmail);
+		if (currentUser.getRole() == Role.STUDENT) {
+			return evaluationRepository
+					.findBySubmittedByIdAndPublishedTrueAndStatusInOrderByPublishedAtDesc(
+							currentUser.getId(),
+							RELEASED_RESULT_STATUSES)
+					.stream()
+					.map(DocumentEvaluationMapper::toSummaryResponse)
+					.toList();
+		}
 		return evaluationRepository.findBySubmittedByIdOrderByCreatedAtDesc(currentUser.getId())
 				.stream()
 				.filter(evaluation -> evaluation.getStatus() != DocumentEvaluationStatus.ARCHIVED)
@@ -373,6 +390,147 @@ class DocumentEvaluationServiceImpl implements DocumentEvaluationService {
 		return DocumentEvaluationMapper.toResponse(evaluationRepository.save(evaluation));
 	}
 
+	@Override
+	@Transactional
+	public EvaluationPublicationStatusResponse publishEvaluation(
+			String currentUserEmail,
+			Long evaluationId,
+			PublishDocumentEvaluationRequest request) {
+		User currentUser = findUserByEmail(currentUserEmail);
+		DocumentEvaluation evaluation = findEvaluation(evaluationId);
+		checkCanPublishEvaluation(currentUser, evaluation);
+		if (evaluation.isPublished()) {
+			throw new BadRequestException("Document evaluation is already published");
+		}
+		if (!RELEASED_RESULT_STATUSES.contains(evaluation.getStatus())) {
+			throw new BadRequestException("Only completed or returned evaluations can be published");
+		}
+
+		evaluation.setPublished(true);
+		evaluation.setPublishedAt(LocalDateTime.now());
+		evaluation.setPublishedBy(currentUser);
+		evaluation.setPublishNote(trimToNull(request.publishNote()));
+		evaluation.setUnpublishedAt(null);
+		evaluation.setUnpublishedBy(null);
+		evaluation.setUnpublishReason(null);
+
+		return DocumentEvaluationMapper.toPublicationStatusResponse(evaluationRepository.save(evaluation));
+	}
+
+	@Override
+	@Transactional
+	public EvaluationPublicationStatusResponse unpublishEvaluation(
+			String currentUserEmail,
+			Long evaluationId,
+			UnpublishDocumentEvaluationRequest request) {
+		User currentUser = findUserByEmail(currentUserEmail);
+		DocumentEvaluation evaluation = findEvaluation(evaluationId);
+		checkCanUnpublishEvaluation(currentUser, evaluation);
+		if (!evaluation.isPublished()) {
+			throw new BadRequestException("Document evaluation is not published");
+		}
+		if (evaluation.getStatus() == DocumentEvaluationStatus.ARCHIVED) {
+			throw new BadRequestException("Archived evaluations cannot be unpublished");
+		}
+
+		evaluation.setPublished(false);
+		evaluation.setUnpublishedAt(LocalDateTime.now());
+		evaluation.setUnpublishedBy(currentUser);
+		evaluation.setUnpublishReason(trimToNull(request.reason()));
+
+		return DocumentEvaluationMapper.toPublicationStatusResponse(evaluationRepository.save(evaluation));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public EvaluationPublicationStatusResponse getPublicationStatus(String currentUserEmail, Long evaluationId) {
+		User currentUser = findUserByEmail(currentUserEmail);
+		DocumentEvaluation evaluation = findEvaluation(evaluationId);
+		if (!canManageEvaluation(currentUser, evaluation)) {
+			throw new AccessDeniedException("Access denied");
+		}
+
+		return DocumentEvaluationMapper.toPublicationStatusResponse(evaluation);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public StudentEvaluationResultResponse getMySubmissionResult(String currentUserEmail, Long submissionId) {
+		User currentUser = findUserByEmail(currentUserEmail);
+		DocumentEvaluation evaluation = evaluationRepository
+				.findBySubmissionIdAndSubmittedByIdAndPublishedTrueAndStatusIn(
+						submissionId,
+						currentUser.getId(),
+						RELEASED_RESULT_STATUSES)
+				.orElseThrow(() -> new ResourceNotFoundException("Published evaluation result not found"));
+
+		return DocumentEvaluationMapper.toStudentResultResponse(evaluation);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<StudentEvaluationResultSummaryResponse> getMyPublishedResults(String currentUserEmail) {
+		User currentUser = findUserByEmail(currentUserEmail);
+		return evaluationRepository
+				.findBySubmittedByIdAndPublishedTrueAndStatusInOrderByPublishedAtDesc(
+						currentUser.getId(),
+						RELEASED_RESULT_STATUSES)
+				.stream()
+				.map(DocumentEvaluationMapper::toStudentResultSummaryResponse)
+				.toList();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<StudentEvaluationResultSummaryResponse> getMyPublishedResultsByAssignment(
+			String currentUserEmail,
+			Long assignmentId) {
+		User currentUser = findUserByEmail(currentUserEmail);
+		return evaluationRepository
+				.findByAssignmentIdAndSubmittedByIdAndPublishedTrueAndStatusInOrderByPublishedAtDesc(
+						assignmentId,
+						currentUser.getId(),
+						RELEASED_RESULT_STATUSES)
+				.stream()
+				.map(DocumentEvaluationMapper::toStudentResultSummaryResponse)
+				.toList();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<StudentEvaluationResultSummaryResponse> getMyPublishedResultsByProject(
+			String currentUserEmail,
+			Long projectId) {
+		User currentUser = findUserByEmail(currentUserEmail);
+		return evaluationRepository
+				.findByProjectIdAndSubmittedByIdAndPublishedTrueAndStatusInOrderByPublishedAtDesc(
+						projectId,
+						currentUser.getId(),
+						RELEASED_RESULT_STATUSES)
+				.stream()
+				.map(DocumentEvaluationMapper::toStudentResultSummaryResponse)
+				.toList();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<StudentEvaluationResultSummaryResponse> getPublishedResultsByAssignment(
+			String currentUserEmail,
+			Long assignmentId) {
+		User currentUser = findUserByEmail(currentUserEmail);
+		DocumentRequirementSetAssignment assignment = assignmentRepository.findById(assignmentId)
+				.orElseThrow(() -> new ResourceNotFoundException("Requirement set assignment not found"));
+		checkCanManageAssignment(currentUser, assignment);
+
+		return evaluationRepository
+				.findByAssignmentIdAndPublishedTrueAndStatusInOrderByPublishedAtDesc(
+						assignmentId,
+						RELEASED_RESULT_STATUSES)
+				.stream()
+				.map(DocumentEvaluationMapper::toStudentResultSummaryResponse)
+				.toList();
+	}
+
 	private DocumentEvaluationCriterionScore buildCriterionScore(RubricCriterion criterion) {
 		DocumentEvaluationCriterionScore criterionScore = new DocumentEvaluationCriterionScore();
 		criterionScore.setCriterion(criterion);
@@ -515,10 +673,38 @@ class DocumentEvaluationServiceImpl implements DocumentEvaluationService {
 		throw new AccessDeniedException("Access denied");
 	}
 
+	private void checkCanPublishEvaluation(User currentUser, DocumentEvaluation evaluation) {
+		if (evaluation.getStatus() == DocumentEvaluationStatus.ARCHIVED) {
+			throw new BadRequestException("Archived evaluations cannot be published");
+		}
+		if (canManageEvaluation(currentUser, evaluation)) {
+			return;
+		}
+		throw new AccessDeniedException("Access denied");
+	}
+
+	private void checkCanUnpublishEvaluation(User currentUser, DocumentEvaluation evaluation) {
+		if (currentUser.getRole() == Role.ADMIN) {
+			return;
+		}
+		if (currentUser.getRole() == Role.INSTRUCTOR && canManageAssignment(currentUser, evaluation.getAssignment())) {
+			return;
+		}
+		throw new AccessDeniedException("Access denied");
+	}
+
 	private void checkCanViewEvaluation(User currentUser, DocumentEvaluation evaluation) {
-		if (isSubmittedBy(currentUser, evaluation)
-				|| canManageEvaluation(currentUser, evaluation)
-				|| isProjectOwner(currentUser, evaluation)) {
+		if (canManageEvaluation(currentUser, evaluation)) {
+			return;
+		}
+		if (currentUser.getRole() == Role.STUDENT
+				&& (isSubmittedBy(currentUser, evaluation) || isProjectOwner(currentUser, evaluation))) {
+			if (isReleasedToStudent(evaluation)) {
+				return;
+			}
+			throw new ResourceNotFoundException("Document evaluation not found");
+		}
+		if (isProjectOwner(currentUser, evaluation)) {
 			return;
 		}
 		throw new AccessDeniedException("Access denied");
@@ -573,6 +759,11 @@ class DocumentEvaluationServiceImpl implements DocumentEvaluationService {
 	private boolean isProjectOwner(User currentUser, DocumentEvaluation evaluation) {
 		return evaluation.getProject() != null
 				&& currentUser.getId().equals(evaluation.getProject().getOwnerUserId());
+	}
+
+	private boolean isReleasedToStudent(DocumentEvaluation evaluation) {
+		return evaluation.isPublished()
+				&& RELEASED_RESULT_STATUSES.contains(evaluation.getStatus());
 	}
 
 	private void checkCriterionScoreBelongsToEvaluation(

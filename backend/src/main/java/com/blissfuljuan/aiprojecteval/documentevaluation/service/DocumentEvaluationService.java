@@ -3,14 +3,19 @@ package com.blissfuljuan.aiprojecteval.documentevaluation.service;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.AddDocumentEvaluationFindingRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.BulkUpdateCriterionScoresRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.CompleteDocumentEvaluationRequest;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.PublishDocumentEvaluationRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.ReturnDocumentEvaluationRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.StartDocumentEvaluationRequest;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.UnpublishDocumentEvaluationRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.UpdateCriterionScoreRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.UpdateDocumentEvaluationFeedbackRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.UpdateDocumentEvaluationFindingRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentEvaluationFindingResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentEvaluationResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentEvaluationSummaryResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.EvaluationPublicationStatusResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.StudentEvaluationResultResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.StudentEvaluationResultSummaryResponse;
 import java.util.List;
 
 public interface DocumentEvaluationService {
@@ -67,4 +72,32 @@ public interface DocumentEvaluationService {
 			ReturnDocumentEvaluationRequest request);
 
 	DocumentEvaluationResponse archiveEvaluation(String currentUserEmail, Long evaluationId);
+
+	EvaluationPublicationStatusResponse publishEvaluation(
+			String currentUserEmail,
+			Long evaluationId,
+			PublishDocumentEvaluationRequest request);
+
+	EvaluationPublicationStatusResponse unpublishEvaluation(
+			String currentUserEmail,
+			Long evaluationId,
+			UnpublishDocumentEvaluationRequest request);
+
+	EvaluationPublicationStatusResponse getPublicationStatus(String currentUserEmail, Long evaluationId);
+
+	StudentEvaluationResultResponse getMySubmissionResult(String currentUserEmail, Long submissionId);
+
+	List<StudentEvaluationResultSummaryResponse> getMyPublishedResults(String currentUserEmail);
+
+	List<StudentEvaluationResultSummaryResponse> getMyPublishedResultsByAssignment(
+			String currentUserEmail,
+			Long assignmentId);
+
+	List<StudentEvaluationResultSummaryResponse> getMyPublishedResultsByProject(
+			String currentUserEmail,
+			Long projectId);
+
+	List<StudentEvaluationResultSummaryResponse> getPublishedResultsByAssignment(
+			String currentUserEmail,
+			Long assignmentId);
 }

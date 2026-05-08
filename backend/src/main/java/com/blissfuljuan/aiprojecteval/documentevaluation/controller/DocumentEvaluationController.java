@@ -4,14 +4,19 @@ import com.blissfuljuan.aiprojecteval.common.response.ApiResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.AddDocumentEvaluationFindingRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.BulkUpdateCriterionScoresRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.CompleteDocumentEvaluationRequest;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.PublishDocumentEvaluationRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.ReturnDocumentEvaluationRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.StartDocumentEvaluationRequest;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.UnpublishDocumentEvaluationRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.UpdateCriterionScoreRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.UpdateDocumentEvaluationFeedbackRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.UpdateDocumentEvaluationFindingRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentEvaluationFindingResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentEvaluationResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentEvaluationSummaryResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.EvaluationPublicationStatusResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.StudentEvaluationResultResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.StudentEvaluationResultSummaryResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.service.DocumentEvaluationService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -177,5 +182,76 @@ public class DocumentEvaluationController {
 			@PathVariable Long evaluationId) {
 		return ApiResponse.ok("Document evaluation archived",
 				evaluationService.archiveEvaluation(authentication.getName(), evaluationId));
+	}
+
+	@PatchMapping("/evaluations/{evaluationId}/publish")
+	@PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR', 'EVALUATOR')")
+	public ApiResponse<EvaluationPublicationStatusResponse> publishEvaluation(
+			Authentication authentication,
+			@PathVariable Long evaluationId,
+			@Valid @RequestBody PublishDocumentEvaluationRequest request) {
+		return ApiResponse.ok("Document evaluation published",
+				evaluationService.publishEvaluation(authentication.getName(), evaluationId, request));
+	}
+
+	@PatchMapping("/evaluations/{evaluationId}/unpublish")
+	@PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR')")
+	public ApiResponse<EvaluationPublicationStatusResponse> unpublishEvaluation(
+			Authentication authentication,
+			@PathVariable Long evaluationId,
+			@Valid @RequestBody UnpublishDocumentEvaluationRequest request) {
+		return ApiResponse.ok("Document evaluation unpublished",
+				evaluationService.unpublishEvaluation(authentication.getName(), evaluationId, request));
+	}
+
+	@GetMapping("/evaluations/{evaluationId}/publication-status")
+	@PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR', 'EVALUATOR')")
+	public ApiResponse<EvaluationPublicationStatusResponse> getPublicationStatus(
+			Authentication authentication,
+			@PathVariable Long evaluationId) {
+		return ApiResponse.ok(evaluationService.getPublicationStatus(authentication.getName(), evaluationId));
+	}
+
+	@GetMapping("/submissions/{submissionId}/result")
+	@PreAuthorize("hasRole('STUDENT')")
+	public ApiResponse<StudentEvaluationResultResponse> getMySubmissionResult(
+			Authentication authentication,
+			@PathVariable Long submissionId) {
+		return ApiResponse.ok(evaluationService.getMySubmissionResult(authentication.getName(), submissionId));
+	}
+
+	@GetMapping("/evaluation-results/my")
+	@PreAuthorize("hasRole('STUDENT')")
+	public ApiResponse<List<StudentEvaluationResultSummaryResponse>> getMyPublishedResults(
+			Authentication authentication) {
+		return ApiResponse.ok(evaluationService.getMyPublishedResults(authentication.getName()));
+	}
+
+	@GetMapping("/requirement-set-assignments/{assignmentId}/evaluation-results/my")
+	@PreAuthorize("hasRole('STUDENT')")
+	public ApiResponse<List<StudentEvaluationResultSummaryResponse>> getMyPublishedResultsByAssignment(
+			Authentication authentication,
+			@PathVariable Long assignmentId) {
+		return ApiResponse.ok(evaluationService.getMyPublishedResultsByAssignment(
+				authentication.getName(),
+				assignmentId));
+	}
+
+	@GetMapping("/projects/{projectId}/evaluation-results/my")
+	@PreAuthorize("hasRole('STUDENT')")
+	public ApiResponse<List<StudentEvaluationResultSummaryResponse>> getMyPublishedResultsByProject(
+			Authentication authentication,
+			@PathVariable Long projectId) {
+		return ApiResponse.ok(evaluationService.getMyPublishedResultsByProject(
+				authentication.getName(),
+				projectId));
+	}
+
+	@GetMapping("/requirement-set-assignments/{assignmentId}/evaluation-results")
+	@PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR', 'EVALUATOR')")
+	public ApiResponse<List<StudentEvaluationResultSummaryResponse>> getPublishedResultsByAssignment(
+			Authentication authentication,
+			@PathVariable Long assignmentId) {
+		return ApiResponse.ok(evaluationService.getPublishedResultsByAssignment(authentication.getName(), assignmentId));
 	}
 }

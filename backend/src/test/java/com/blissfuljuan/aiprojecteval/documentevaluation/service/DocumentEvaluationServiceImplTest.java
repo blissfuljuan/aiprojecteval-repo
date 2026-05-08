@@ -8,12 +8,19 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.blissfuljuan.aiprojecteval.common.exception.BadRequestException;
+import com.blissfuljuan.aiprojecteval.common.exception.ResourceNotFoundException;
 import com.blissfuljuan.aiprojecteval.courseclass.model.CourseClass;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.CompleteDocumentEvaluationRequest;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.PublishDocumentEvaluationRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.ReturnDocumentEvaluationRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.StartDocumentEvaluationRequest;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.UnpublishDocumentEvaluationRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.UpdateCriterionScoreRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentEvaluationResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.EvaluationPublicationStatusResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.StudentEvaluationResultResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.StudentEvaluationResultSummaryResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentEvaluationFindingType;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.ConfigurationStatus;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentEvaluationStatus;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentSubmissionFileStatus;
@@ -23,6 +30,7 @@ import com.blissfuljuan.aiprojecteval.documentevaluation.enums.RequirementSetAss
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.RubricScoringType;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentEvaluation;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentEvaluationCriterionScore;
+import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentEvaluationFinding;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirement;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirementSet;
 import com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirementSetAssignment;
@@ -323,6 +331,235 @@ class DocumentEvaluationServiceImplTest {
 	}
 
 	@Test
+	void shouldPublishCompletedEvaluation() {
+		User instructor = user(90L, "instructor@example.com", Role.INSTRUCTOR);
+		User student = user(1L, "student@example.com", Role.STUDENT);
+		DocumentRequirementSet requirementSet = requirementSet(10L, instructor);
+		DocumentRequirement requirement = requirement(20L, requirementSet);
+		DocumentRequirementSetAssignment assignment = classAssignment(40L, requirementSet);
+		DocumentEvaluation evaluation = evaluation(70L, instructor, student, assignment, requirement);
+		evaluation.setStatus(DocumentEvaluationStatus.COMPLETED);
+		when(userRepository.findByEmail("instructor@example.com")).thenReturn(Optional.of(instructor));
+		when(evaluationRepository.findById(70L)).thenReturn(Optional.of(evaluation));
+		when(evaluationRepository.save(any(DocumentEvaluation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		EvaluationPublicationStatusResponse response = service.publishEvaluation(
+				"instructor@example.com",
+				70L,
+				new PublishDocumentEvaluationRequest("Released"));
+
+		assertThat(response.published()).isTrue();
+		assertThat(response.publishedAt()).isNotNull();
+		assertThat(response.publishedById()).isEqualTo(90L);
+		assertThat(response.publishNote()).isEqualTo("Released");
+	}
+
+	@Test
+	void shouldPublishReturnedEvaluation() {
+		User instructor = user(90L, "instructor@example.com", Role.INSTRUCTOR);
+		User student = user(1L, "student@example.com", Role.STUDENT);
+		DocumentRequirementSet requirementSet = requirementSet(10L, instructor);
+		DocumentRequirement requirement = requirement(20L, requirementSet);
+		DocumentRequirementSetAssignment assignment = classAssignment(40L, requirementSet);
+		DocumentEvaluation evaluation = evaluation(70L, instructor, student, assignment, requirement);
+		evaluation.setStatus(DocumentEvaluationStatus.RETURNED);
+		when(userRepository.findByEmail("instructor@example.com")).thenReturn(Optional.of(instructor));
+		when(evaluationRepository.findById(70L)).thenReturn(Optional.of(evaluation));
+		when(evaluationRepository.save(any(DocumentEvaluation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		EvaluationPublicationStatusResponse response = service.publishEvaluation(
+				"instructor@example.com",
+				70L,
+				new PublishDocumentEvaluationRequest("Revision feedback released"));
+
+		assertThat(response.published()).isTrue();
+		assertThat(response.evaluationStatus()).isEqualTo("RETURNED");
+	}
+
+	@Test
+	void shouldRejectPublishingDraftEvaluation() {
+		User instructor = user(90L, "instructor@example.com", Role.INSTRUCTOR);
+		User student = user(1L, "student@example.com", Role.STUDENT);
+		DocumentRequirementSet requirementSet = requirementSet(10L, instructor);
+		DocumentRequirement requirement = requirement(20L, requirementSet);
+		DocumentRequirementSetAssignment assignment = classAssignment(40L, requirementSet);
+		DocumentEvaluation evaluation = evaluation(70L, instructor, student, assignment, requirement);
+		when(userRepository.findByEmail("instructor@example.com")).thenReturn(Optional.of(instructor));
+		when(evaluationRepository.findById(70L)).thenReturn(Optional.of(evaluation));
+
+		assertThatThrownBy(() -> service.publishEvaluation(
+				"instructor@example.com",
+				70L,
+				new PublishDocumentEvaluationRequest("Released")))
+				.isInstanceOf(BadRequestException.class)
+				.hasMessage("Only completed or returned evaluations can be published");
+	}
+
+	@Test
+	void shouldRejectPublishingArchivedEvaluation() {
+		User instructor = user(90L, "instructor@example.com", Role.INSTRUCTOR);
+		User student = user(1L, "student@example.com", Role.STUDENT);
+		DocumentRequirementSet requirementSet = requirementSet(10L, instructor);
+		DocumentRequirement requirement = requirement(20L, requirementSet);
+		DocumentRequirementSetAssignment assignment = classAssignment(40L, requirementSet);
+		DocumentEvaluation evaluation = evaluation(70L, instructor, student, assignment, requirement);
+		evaluation.setStatus(DocumentEvaluationStatus.ARCHIVED);
+		when(userRepository.findByEmail("instructor@example.com")).thenReturn(Optional.of(instructor));
+		when(evaluationRepository.findById(70L)).thenReturn(Optional.of(evaluation));
+
+		assertThatThrownBy(() -> service.publishEvaluation(
+				"instructor@example.com",
+				70L,
+				new PublishDocumentEvaluationRequest("Released")))
+				.isInstanceOf(BadRequestException.class)
+				.hasMessage("Archived evaluations cannot be published");
+	}
+
+	@Test
+	void shouldReturnPublishedEvaluationResultForOwningStudent() {
+		User instructor = user(90L, "instructor@example.com", Role.INSTRUCTOR);
+		User student = user(1L, "student@example.com", Role.STUDENT);
+		DocumentRequirementSet requirementSet = requirementSet(10L, instructor);
+		DocumentRequirement requirement = requirement(20L, requirementSet);
+		DocumentRequirementSetAssignment assignment = classAssignment(40L, requirementSet);
+		DocumentEvaluation evaluation = evaluation(70L, instructor, student, assignment, requirement);
+		evaluation.setStatus(DocumentEvaluationStatus.COMPLETED);
+		evaluation.setPublished(true);
+		evaluation.setPublishedAt(LocalDateTime.now());
+		evaluation.setPublishNote("Released");
+		DocumentEvaluationCriterionScore criterionScore = criterionScore(
+				71L,
+				evaluation,
+				criterion(31L, rubric(30L), "Content", "10.00", 1),
+				"10.00");
+		criterionScore.setScore(new BigDecimal("9.00"));
+		criterionScore.setComment("Strong work");
+		evaluation.addCriterionScore(criterionScore);
+		evaluation.addFinding(finding(81L, evaluation));
+		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
+		when(evaluationRepository.findBySubmissionIdAndSubmittedByIdAndPublishedTrueAndStatusIn(
+				50L,
+				1L,
+				List.of(DocumentEvaluationStatus.COMPLETED, DocumentEvaluationStatus.RETURNED)))
+				.thenReturn(Optional.of(evaluation));
+
+		StudentEvaluationResultResponse response = service.getMySubmissionResult("student@example.com", 50L);
+
+		assertThat(response.evaluationId()).isEqualTo(70L);
+		assertThat(response.published()).isTrue();
+		assertThat(response.criterionScores()).hasSize(1);
+		assertThat(response.findings()).hasSize(1);
+		assertThat(response.criterionScores().get(0).criterionName()).isEqualTo("Content");
+	}
+
+	@Test
+	void shouldNotReturnUnpublishedResultToStudent() {
+		User student = user(1L, "student@example.com", Role.STUDENT);
+		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
+		when(evaluationRepository.findBySubmissionIdAndSubmittedByIdAndPublishedTrueAndStatusIn(
+				50L,
+				1L,
+				List.of(DocumentEvaluationStatus.COMPLETED, DocumentEvaluationStatus.RETURNED)))
+				.thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> service.getMySubmissionResult("student@example.com", 50L))
+				.isInstanceOf(ResourceNotFoundException.class)
+				.hasMessage("Published evaluation result not found");
+	}
+
+	@Test
+	void shouldListOnlyPublishedResultsForCurrentStudent() {
+		User instructor = user(90L, "instructor@example.com", Role.INSTRUCTOR);
+		User student = user(1L, "student@example.com", Role.STUDENT);
+		DocumentRequirementSet requirementSet = requirementSet(10L, instructor);
+		DocumentRequirement requirement = requirement(20L, requirementSet);
+		DocumentRequirementSetAssignment assignment = classAssignment(40L, requirementSet);
+		DocumentEvaluation evaluation = evaluation(70L, instructor, student, assignment, requirement);
+		evaluation.setStatus(DocumentEvaluationStatus.COMPLETED);
+		evaluation.setPublished(true);
+		evaluation.setPublishedAt(LocalDateTime.now());
+		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
+		when(evaluationRepository.findBySubmittedByIdAndPublishedTrueAndStatusInOrderByPublishedAtDesc(
+				1L,
+				List.of(DocumentEvaluationStatus.COMPLETED, DocumentEvaluationStatus.RETURNED)))
+				.thenReturn(List.of(evaluation));
+
+		List<StudentEvaluationResultSummaryResponse> response = service.getMyPublishedResults("student@example.com");
+
+		assertThat(response).hasSize(1);
+		assertThat(response.get(0).evaluationId()).isEqualTo(70L);
+		assertThat(response.get(0).published()).isTrue();
+	}
+
+	@Test
+	void shouldLimitLegacySubmittedEvaluationListToPublishedResultsForStudent() {
+		User instructor = user(90L, "instructor@example.com", Role.INSTRUCTOR);
+		User student = user(1L, "student@example.com", Role.STUDENT);
+		DocumentRequirementSet requirementSet = requirementSet(10L, instructor);
+		DocumentRequirement requirement = requirement(20L, requirementSet);
+		DocumentRequirementSetAssignment assignment = classAssignment(40L, requirementSet);
+		DocumentEvaluation evaluation = evaluation(70L, instructor, student, assignment, requirement);
+		evaluation.setStatus(DocumentEvaluationStatus.COMPLETED);
+		evaluation.setPublished(true);
+		evaluation.setPublishedAt(LocalDateTime.now());
+		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
+		when(evaluationRepository.findBySubmittedByIdAndPublishedTrueAndStatusInOrderByPublishedAtDesc(
+				1L,
+				List.of(DocumentEvaluationStatus.COMPLETED, DocumentEvaluationStatus.RETURNED)))
+				.thenReturn(List.of(evaluation));
+
+		List<?> response = service.getMySubmittedEvaluations("student@example.com");
+
+		assertThat(response).hasSize(1);
+		verify(evaluationRepository, never()).findBySubmittedByIdOrderByCreatedAtDesc(1L);
+	}
+
+	@Test
+	void shouldUnpublishEvaluationAndHideResultFromStudentQuery() {
+		User instructor = user(90L, "instructor@example.com", Role.INSTRUCTOR);
+		User student = user(1L, "student@example.com", Role.STUDENT);
+		DocumentRequirementSet requirementSet = requirementSet(10L, instructor);
+		DocumentRequirement requirement = requirement(20L, requirementSet);
+		DocumentRequirementSetAssignment assignment = classAssignment(40L, requirementSet);
+		DocumentEvaluation evaluation = evaluation(70L, instructor, student, assignment, requirement);
+		evaluation.setStatus(DocumentEvaluationStatus.COMPLETED);
+		evaluation.setPublished(true);
+		evaluation.setPublishedAt(LocalDateTime.now());
+		when(userRepository.findByEmail("instructor@example.com")).thenReturn(Optional.of(instructor));
+		when(evaluationRepository.findById(70L)).thenReturn(Optional.of(evaluation));
+		when(evaluationRepository.save(any(DocumentEvaluation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		EvaluationPublicationStatusResponse response = service.unpublishEvaluation(
+				"instructor@example.com",
+				70L,
+				new UnpublishDocumentEvaluationRequest("Correction needed"));
+
+		assertThat(response.published()).isFalse();
+		assertThat(response.unpublishedAt()).isNotNull();
+		assertThat(response.unpublishedById()).isEqualTo(90L);
+		assertThat(response.unpublishReason()).isEqualTo("Correction needed");
+	}
+
+	@Test
+	void shouldRejectStudentPublishingEvaluation() {
+		User instructor = user(90L, "instructor@example.com", Role.INSTRUCTOR);
+		User student = user(1L, "student@example.com", Role.STUDENT);
+		DocumentRequirementSet requirementSet = requirementSet(10L, instructor);
+		DocumentRequirement requirement = requirement(20L, requirementSet);
+		DocumentRequirementSetAssignment assignment = classAssignment(40L, requirementSet);
+		DocumentEvaluation evaluation = evaluation(70L, instructor, student, assignment, requirement);
+		evaluation.setStatus(DocumentEvaluationStatus.COMPLETED);
+		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
+		when(evaluationRepository.findById(70L)).thenReturn(Optional.of(evaluation));
+
+		assertThatThrownBy(() -> service.publishEvaluation(
+				"student@example.com",
+				70L,
+				new PublishDocumentEvaluationRequest("Released")))
+				.isInstanceOf(AccessDeniedException.class);
+	}
+
+	@Test
 	void shouldRejectStudentUpdatingEvaluation() {
 		User instructor = user(90L, "instructor@example.com", Role.INSTRUCTOR);
 		User student = user(1L, "student@example.com", Role.STUDENT);
@@ -498,5 +735,18 @@ class DocumentEvaluationServiceImplTest {
 		criterionScore.setMaxScore(new BigDecimal(maxScore));
 		criterionScore.setDisplayOrder(criterion.getSortOrder());
 		return criterionScore;
+	}
+
+	private DocumentEvaluationFinding finding(Long id, DocumentEvaluation evaluation) {
+		DocumentEvaluationFinding finding = new DocumentEvaluationFinding();
+		finding.setId(id);
+		finding.setEvaluation(evaluation);
+		finding.setType(DocumentEvaluationFindingType.REVISION_REQUIRED);
+		finding.setTitle("Revise content");
+		finding.setDescription("Add supporting details");
+		finding.setRecommendation("Revise the affected section");
+		finding.setSeverity(3);
+		finding.setDisplayOrder(1);
+		return finding;
 	}
 }

@@ -14,9 +14,32 @@ public interface DocumentEvaluationRepository extends JpaRepository<DocumentEval
 
 	Optional<DocumentEvaluation> findBySubmissionIdAndStatusNot(Long submissionId, DocumentEvaluationStatus status);
 
+	Optional<DocumentEvaluation> findBySubmissionIdAndSubmittedByIdAndPublishedTrueAndStatusIn(
+			Long submissionId,
+			Long submittedById,
+			List<DocumentEvaluationStatus> statuses);
+
 	List<DocumentEvaluation> findByAssignmentIdOrderByCreatedAtDesc(Long assignmentId);
 
 	List<DocumentEvaluation> findBySubmittedByIdOrderByCreatedAtDesc(Long submittedById);
+
+	List<DocumentEvaluation> findBySubmittedByIdAndPublishedTrueAndStatusInOrderByPublishedAtDesc(
+			Long submittedById,
+			List<DocumentEvaluationStatus> statuses);
+
+	List<DocumentEvaluation> findByAssignmentIdAndSubmittedByIdAndPublishedTrueAndStatusInOrderByPublishedAtDesc(
+			Long assignmentId,
+			Long submittedById,
+			List<DocumentEvaluationStatus> statuses);
+
+	List<DocumentEvaluation> findByProjectIdAndSubmittedByIdAndPublishedTrueAndStatusInOrderByPublishedAtDesc(
+			Long projectId,
+			Long submittedById,
+			List<DocumentEvaluationStatus> statuses);
+
+	List<DocumentEvaluation> findByAssignmentIdAndPublishedTrueAndStatusInOrderByPublishedAtDesc(
+			Long assignmentId,
+			List<DocumentEvaluationStatus> statuses);
 
 	List<DocumentEvaluation> findByEvaluatedByIdOrderByCreatedAtDesc(Long evaluatedById);
 

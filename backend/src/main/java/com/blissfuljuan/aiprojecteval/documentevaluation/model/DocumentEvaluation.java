@@ -39,7 +39,13 @@ import java.util.List;
 				@Index(name = "idx_document_evaluations_submitted_by", columnList = "submitted_by_id"),
 				@Index(name = "idx_document_evaluations_project", columnList = "project_id"),
 				@Index(name = "idx_document_evaluations_course_class", columnList = "course_class_id"),
-				@Index(name = "idx_document_evaluations_status", columnList = "status")
+				@Index(name = "idx_document_evaluations_status", columnList = "status"),
+				@Index(name = "idx_document_evaluations_published", columnList = "published"),
+				@Index(name = "idx_document_evaluations_published_at", columnList = "published_at"),
+				@Index(name = "idx_document_evaluations_published_by", columnList = "published_by_id"),
+				@Index(name = "idx_document_evaluations_submitted_published", columnList = "submitted_by_id,published"),
+				@Index(name = "idx_document_evaluations_assignment_published", columnList = "assignment_id,published"),
+				@Index(name = "idx_document_evaluations_project_published", columnList = "project_id,published")
 		}
 )
 public class DocumentEvaluation {
@@ -126,6 +132,31 @@ public class DocumentEvaluation {
 
 	@Column
 	private LocalDateTime returnedAt;
+
+	@Column(nullable = false)
+	private boolean published;
+
+	@Column
+	private LocalDateTime publishedAt;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "published_by_id")
+	private User publishedBy;
+
+	@Column
+	private LocalDateTime unpublishedAt;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "unpublished_by_id")
+	private User unpublishedBy;
+
+	@Size(max = 4000)
+	@Column(columnDefinition = "TEXT")
+	private String publishNote;
+
+	@Size(max = 4000)
+	@Column(columnDefinition = "TEXT")
+	private String unpublishReason;
 
 	@OneToMany(mappedBy = "evaluation", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<DocumentEvaluationCriterionScore> criterionScores = new ArrayList<>();
@@ -317,6 +348,62 @@ public class DocumentEvaluation {
 
 	public void setReturnedAt(LocalDateTime returnedAt) {
 		this.returnedAt = returnedAt;
+	}
+
+	public boolean isPublished() {
+		return published;
+	}
+
+	public void setPublished(boolean published) {
+		this.published = published;
+	}
+
+	public LocalDateTime getPublishedAt() {
+		return publishedAt;
+	}
+
+	public void setPublishedAt(LocalDateTime publishedAt) {
+		this.publishedAt = publishedAt;
+	}
+
+	public User getPublishedBy() {
+		return publishedBy;
+	}
+
+	public void setPublishedBy(User publishedBy) {
+		this.publishedBy = publishedBy;
+	}
+
+	public LocalDateTime getUnpublishedAt() {
+		return unpublishedAt;
+	}
+
+	public void setUnpublishedAt(LocalDateTime unpublishedAt) {
+		this.unpublishedAt = unpublishedAt;
+	}
+
+	public User getUnpublishedBy() {
+		return unpublishedBy;
+	}
+
+	public void setUnpublishedBy(User unpublishedBy) {
+		this.unpublishedBy = unpublishedBy;
+	}
+
+	public String getPublishNote() {
+		return publishNote;
+	}
+
+	public void setPublishNote(String publishNote) {
+		this.publishNote = publishNote;
+	}
+
+	public String getUnpublishReason() {
+		return unpublishReason;
+	}
+
+	public void setUnpublishReason(String unpublishReason) {
+		this.unpublishReason = unpublishReason;
 	}
 
 	public List<DocumentEvaluationCriterionScore> getCriterionScores() {
