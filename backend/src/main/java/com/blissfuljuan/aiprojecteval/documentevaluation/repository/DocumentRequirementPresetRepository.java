@@ -13,4 +13,12 @@ public interface DocumentRequirementPresetRepository extends JpaRepository<Docum
 	List<DocumentRequirementPreset> findByVisibility(PresetVisibility visibility);
 
 	List<DocumentRequirementPreset> findByCreatedById(Long createdById);
+
+	List<DocumentRequirementPreset> findByStatusAndVisibility(
+			ConfigurationStatus status,
+			PresetVisibility visibility);
+
+	List<DocumentRequirementPreset> findByCategoryIgnoreCase(String category);
+
+	List<DocumentRequirementPreset> findByNameContainingIgnoreCase(String name);
 }
