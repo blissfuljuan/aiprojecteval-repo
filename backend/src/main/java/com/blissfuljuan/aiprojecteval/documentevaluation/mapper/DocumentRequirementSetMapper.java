@@ -2,6 +2,7 @@ package com.blissfuljuan.aiprojecteval.documentevaluation.mapper;
 
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentRequirementResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentRequirementSetResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentRequirementSetSummaryResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentTemplateResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.EvaluationRubricResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.RubricCriterionResponse;
@@ -46,7 +47,25 @@ public final class DocumentRequirementSetMapper {
 		);
 	}
 
-	private static DocumentRequirementResponse toRequirementResponse(DocumentRequirement requirement) {
+	public static DocumentRequirementSetSummaryResponse toSummaryResponse(DocumentRequirementSet requirementSet) {
+		User ownerInstructor = requirementSet.getOwnerInstructor();
+
+		return new DocumentRequirementSetSummaryResponse(
+				requirementSet.getId(),
+				requirementSet.getName(),
+				requirementSet.getDescription(),
+				requirementSet.getSourcePresetId(),
+				ownerInstructor == null ? null : ownerInstructor.getId(),
+				ownerInstructor == null ? null : formatUserName(ownerInstructor),
+				ownerInstructor == null ? null : ownerInstructor.getEmail(),
+				requirementSet.getStatus(),
+				requirementSet.getCreatedAt(),
+				requirementSet.getUpdatedAt(),
+				requirementSet.getDocumentRequirements().size()
+		);
+	}
+
+	public static DocumentRequirementResponse toRequirementResponse(DocumentRequirement requirement) {
 		return new DocumentRequirementResponse(
 				requirement.getId(),
 				requirement.getRequirementSet() == null ? null : requirement.getRequirementSet().getId(),
