@@ -5,10 +5,12 @@ import java.time.LocalDateTime;
 
 public record DocumentSubmissionFileResponse(
 		Long id,
+		Long submissionId,
 		String originalFileName,
 		String storedFileName,
 		String fileUrl,
-		String storagePath,
+		String downloadUrl,
+		String viewUrl,
 		String contentType,
 		Long fileSize,
 		String fileExtension,

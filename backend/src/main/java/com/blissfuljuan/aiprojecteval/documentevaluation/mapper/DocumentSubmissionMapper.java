@@ -80,12 +80,21 @@ public final class DocumentSubmissionMapper {
 	}
 
 	public static DocumentSubmissionFileResponse toFileResponse(DocumentSubmissionFile file) {
+		Long fileId = file.getId();
+		Long submissionId = file.getSubmission() == null ? null : file.getSubmission().getId();
+		String downloadUrl = fileId == null ? null
+				: "/api/document-evaluation/submissions/files/" + fileId + "/download";
+		String viewUrl = fileId == null ? null
+				: "/api/document-evaluation/submissions/files/" + fileId + "/view";
+
 		return new DocumentSubmissionFileResponse(
-				file.getId(),
+				fileId,
+				submissionId,
 				file.getOriginalFileName(),
 				file.getStoredFileName(),
 				file.getFileUrl(),
-				file.getStoragePath(),
+				downloadUrl,
+				viewUrl,
 				file.getContentType(),
 				file.getFileSize(),
 				file.getFileExtension(),
