@@ -1,14 +1,17 @@
 package com.blissfuljuan.aiprojecteval.documentevaluation.controller;
 
 import com.blissfuljuan.aiprojecteval.common.response.ApiResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.CopyPresetRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.CreateDocumentRequirementPresetRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.PresetDocumentRequirementRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.UpdateDocumentRequirementPresetRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.UpdatePresetDocumentRequirementRequest;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentRequirementPresetResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentRequirementSetResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.ConfigurationStatus;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.PresetVisibility;
 import com.blissfuljuan.aiprojecteval.documentevaluation.service.DocumentRequirementPresetService;
+import com.blissfuljuan.aiprojecteval.documentevaluation.service.DocumentRequirementSetCopyService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,9 +32,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class DocumentRequirementPresetController {
 
 	private final DocumentRequirementPresetService presetService;
+	private final DocumentRequirementSetCopyService copyService;
 
-	public DocumentRequirementPresetController(DocumentRequirementPresetService presetService) {
+	public DocumentRequirementPresetController(
+			DocumentRequirementPresetService presetService,
+			DocumentRequirementSetCopyService copyService) {
 		this.presetService = presetService;
+		this.copyService = copyService;
 	}
 
 	@PostMapping
@@ -65,6 +72,16 @@ public class DocumentRequirementPresetController {
 			Authentication authentication,
 			@PathVariable Long presetId) {
 		return ApiResponse.ok(presetService.getPresetById(authentication.getName(), presetId));
+	}
+
+	@PostMapping("/{presetId}/copy")
+	@PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR')")
+	public ApiResponse<DocumentRequirementSetResponse> copyPreset(
+			Authentication authentication,
+			@PathVariable Long presetId,
+			@Valid @RequestBody CopyPresetRequest request) {
+		return ApiResponse.ok("Document requirement set created",
+				copyService.copyPresetToRequirementSet(authentication.getName(), presetId, request));
 	}
 
 	@PutMapping("/{presetId}")
