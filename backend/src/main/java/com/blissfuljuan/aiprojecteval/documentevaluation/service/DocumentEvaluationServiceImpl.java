@@ -18,6 +18,7 @@ import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentEv
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.EvaluationPublicationStatusResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.StudentEvaluationResultResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.StudentEvaluationResultSummaryResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.enums.ConfigurationStatus;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentEvaluationFindingType;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.DocumentEvaluationStatus;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.RequirementSetAssignmentStatus;
@@ -588,6 +589,9 @@ class DocumentEvaluationServiceImpl implements DocumentEvaluationService {
 			throw new BadRequestException("Only active requirement set assignments can be evaluated");
 		}
 		DocumentRequirementSet requirementSet = assignment.getRequirementSet();
+		if (requirementSet == null || requirementSet.getStatus() != ConfigurationStatus.ACTIVE) {
+			throw new BadRequestException("Only active requirement sets can be evaluated");
+		}
 		DocumentRequirement requirement = requirementSet.getDocumentRequirements()
 				.stream()
 				.filter(item -> item.getId().equals(submission.getRequirementId()))

@@ -230,6 +230,36 @@ class SubmissionFileServiceImplTest {
 	}
 
 	@Test
+	void shouldRejectRemoveForUnauthorizedStudent() {
+		User owner = user(1L, "owner@example.com", Role.STUDENT);
+		User otherStudent = user(2L, "other@example.com", Role.STUDENT);
+		Submission submission = draftSubmission(owner);
+		SubmissionFile file = uploadedFile(70L, submission);
+		when(identityQueryService.getUserByEmail("other@example.com")).thenReturn(otherStudent);
+		when(fileRepository.findById(70L)).thenReturn(Optional.of(file));
+
+		assertThatThrownBy(() -> service.removeFile(70L, "other@example.com"))
+				.isInstanceOf(AccessDeniedException.class);
+
+		verify(fileRepository, never()).save(any(SubmissionFile.class));
+	}
+
+	@Test
+	void shouldRejectReplaceForUnauthorizedStudent() {
+		User owner = user(1L, "owner@example.com", Role.STUDENT);
+		User otherStudent = user(2L, "other@example.com", Role.STUDENT);
+		Submission submission = draftSubmission(owner);
+		SubmissionFile file = uploadedFile(70L, submission);
+		when(identityQueryService.getUserByEmail("other@example.com")).thenReturn(otherStudent);
+		when(fileRepository.findById(70L)).thenReturn(Optional.of(file));
+
+		assertThatThrownBy(() -> service.replaceFile(70L, pdfFile("srs-v2.pdf", "v2"), "other@example.com"))
+				.isInstanceOf(AccessDeniedException.class);
+
+		verify(storageService, never()).store(any(), any());
+	}
+
+	@Test
 	void shouldMarkRemovedFileAsRemoved() {
 		User student = user(1L, "student@example.com", Role.STUDENT);
 		Submission submission = draftSubmission(student);

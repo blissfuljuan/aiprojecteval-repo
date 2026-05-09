@@ -167,6 +167,105 @@ class DocumentEvaluationServiceImplTest {
 	}
 
 	@Test
+	void shouldRejectStartingEvaluationForNonDocumentSubmission() {
+		User instructor = user(90L, "instructor@example.com", Role.INSTRUCTOR);
+		User student = user(1L, "student@example.com", Role.STUDENT);
+		DocumentRequirementSet requirementSet = requirementSet(10L, instructor);
+		DocumentRequirement requirement = requirement(20L, requirementSet);
+		DocumentRequirementSetAssignment assignment = classAssignment(40L, requirementSet);
+		Submission submission = submission(50L, student, assignment, requirement, SubmissionStatus.SUBMITTED);
+		submission.setType(SubmissionType.PROJECT_PROPOSAL);
+		stubStartEvaluation(instructor, submission, List.of(uploadedFile(60L, submission)), false);
+
+		assertThatThrownBy(() -> service.startEvaluation(
+				"instructor@example.com",
+				new StartDocumentEvaluationRequest(50L)))
+				.isInstanceOf(BadRequestException.class)
+				.hasMessage("Only document submissions can be evaluated");
+
+		verify(evaluationRepository, never()).save(any(DocumentEvaluation.class));
+	}
+
+	@Test
+	void shouldRejectStartingEvaluationForArchivedSubmission() {
+		User instructor = user(90L, "instructor@example.com", Role.INSTRUCTOR);
+		User student = user(1L, "student@example.com", Role.STUDENT);
+		DocumentRequirementSet requirementSet = requirementSet(10L, instructor);
+		DocumentRequirement requirement = requirement(20L, requirementSet);
+		DocumentRequirementSetAssignment assignment = classAssignment(40L, requirementSet);
+		Submission submission = submission(50L, student, assignment, requirement, SubmissionStatus.ARCHIVED);
+		stubStartEvaluation(instructor, submission, List.of(uploadedFile(60L, submission)), false);
+
+		assertThatThrownBy(() -> service.startEvaluation(
+				"instructor@example.com",
+				new StartDocumentEvaluationRequest(50L)))
+				.isInstanceOf(BadRequestException.class)
+				.hasMessage("Only submitted, resubmitted, or accepted submissions can be evaluated");
+
+		verify(evaluationRepository, never()).save(any(DocumentEvaluation.class));
+	}
+
+	@Test
+	void shouldRejectStartingEvaluationForInactiveAssignment() {
+		User instructor = user(90L, "instructor@example.com", Role.INSTRUCTOR);
+		User student = user(1L, "student@example.com", Role.STUDENT);
+		DocumentRequirementSet requirementSet = requirementSet(10L, instructor);
+		DocumentRequirement requirement = requirement(20L, requirementSet);
+		DocumentRequirementSetAssignment assignment = classAssignment(40L, requirementSet);
+		assignment.setStatus(RequirementSetAssignmentStatus.INACTIVE);
+		Submission submission = submission(50L, student, assignment, requirement, SubmissionStatus.SUBMITTED);
+		stubStartEvaluation(instructor, submission, List.of(uploadedFile(60L, submission)), false);
+
+		assertThatThrownBy(() -> service.startEvaluation(
+				"instructor@example.com",
+				new StartDocumentEvaluationRequest(50L)))
+				.isInstanceOf(BadRequestException.class)
+				.hasMessage("Only active requirement set assignments can be evaluated");
+
+		verify(evaluationRepository, never()).save(any(DocumentEvaluation.class));
+	}
+
+	@Test
+	void shouldRejectStartingEvaluationForInactiveRequirementSet() {
+		User instructor = user(90L, "instructor@example.com", Role.INSTRUCTOR);
+		User student = user(1L, "student@example.com", Role.STUDENT);
+		DocumentRequirementSet requirementSet = requirementSet(10L, instructor);
+		requirementSet.setStatus(ConfigurationStatus.ARCHIVED);
+		DocumentRequirement requirement = requirement(20L, requirementSet);
+		DocumentRequirementSetAssignment assignment = classAssignment(40L, requirementSet);
+		Submission submission = submission(50L, student, assignment, requirement, SubmissionStatus.SUBMITTED);
+		stubStartEvaluation(instructor, submission, List.of(uploadedFile(60L, submission)), false);
+
+		assertThatThrownBy(() -> service.startEvaluation(
+				"instructor@example.com",
+				new StartDocumentEvaluationRequest(50L)))
+				.isInstanceOf(BadRequestException.class)
+				.hasMessage("Only active requirement sets can be evaluated");
+
+		verify(evaluationRepository, never()).save(any(DocumentEvaluation.class));
+	}
+
+	@Test
+	void shouldRejectStartingEvaluationForRequirementOutsideAssignedSet() {
+		User instructor = user(90L, "instructor@example.com", Role.INSTRUCTOR);
+		User student = user(1L, "student@example.com", Role.STUDENT);
+		DocumentRequirementSet assignedSet = requirementSet(10L, instructor);
+		DocumentRequirementSet otherSet = requirementSet(11L, instructor);
+		DocumentRequirement otherRequirement = requirement(20L, otherSet);
+		DocumentRequirementSetAssignment assignment = classAssignment(40L, assignedSet);
+		Submission submission = submission(50L, student, assignment, otherRequirement, SubmissionStatus.SUBMITTED);
+		stubStartEvaluation(instructor, submission, List.of(uploadedFile(60L, submission)), false);
+
+		assertThatThrownBy(() -> service.startEvaluation(
+				"instructor@example.com",
+				new StartDocumentEvaluationRequest(50L)))
+				.isInstanceOf(BadRequestException.class)
+				.hasMessage("Document requirement does not belong to the assigned requirement set");
+
+		verify(evaluationRepository, never()).save(any(DocumentEvaluation.class));
+	}
+
+	@Test
 	void shouldRejectStartingEvaluationWithoutUploadedFile() {
 		User instructor = user(90L, "instructor@example.com", Role.INSTRUCTOR);
 		User student = user(1L, "student@example.com", Role.STUDENT);
@@ -281,6 +380,34 @@ class DocumentEvaluationServiceImplTest {
 				new UpdateCriterionScoreRequest(31L, 90L, null, null, null)))
 				.isInstanceOf(BadRequestException.class)
 				.hasMessage("Selected rubric level does not belong to the criterion");
+	}
+
+	@Test
+	void shouldRejectEditingCompletedReturnedAndArchivedEvaluations() {
+		User instructor = user(90L, "instructor@example.com", Role.INSTRUCTOR);
+		User student = user(1L, "student@example.com", Role.STUDENT);
+		DocumentRequirementSet requirementSet = requirementSet(10L, instructor);
+		DocumentRequirement requirement = requirement(20L, requirementSet);
+		DocumentRequirementSetAssignment assignment = classAssignment(40L, requirementSet);
+
+		for (DocumentEvaluationStatus status : List.of(
+				DocumentEvaluationStatus.COMPLETED,
+				DocumentEvaluationStatus.RETURNED,
+				DocumentEvaluationStatus.ARCHIVED)) {
+			DocumentEvaluation evaluation = evaluation(70L, instructor, student, assignment, requirement);
+			evaluation.setStatus(status);
+			when(userRepository.findByEmail("instructor@example.com")).thenReturn(Optional.of(instructor));
+			when(evaluationRepository.findById(70L)).thenReturn(Optional.of(evaluation));
+
+			assertThatThrownBy(() -> service.updateFeedback(
+					"instructor@example.com",
+					70L,
+					new com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.UpdateDocumentEvaluationFeedbackRequest(
+							"Feedback",
+							"Remarks")))
+					.isInstanceOf(BadRequestException.class)
+					.hasMessage("Completed, returned, and archived evaluations are read-only");
+		}
 	}
 
 	@Test
@@ -596,7 +723,7 @@ class DocumentEvaluationServiceImplTest {
 			DocumentRequirementSetAssignment assignment = assignmentRepository.findById(submission.getAssignmentId())
 					.orElseThrow();
 			DocumentRequirement requirement = assignment.getRequirementSet().getDocumentRequirements().get(0);
-			when(evaluationRepository.findBySubmissionIdAndStatusNot(
+			org.mockito.Mockito.lenient().when(evaluationRepository.findBySubmissionIdAndStatusNot(
 					submission.getId(),
 					DocumentEvaluationStatus.ARCHIVED))
 					.thenReturn(Optional.of(evaluation(80L, instructor, submission.getSubmittedBy(),
@@ -604,7 +731,7 @@ class DocumentEvaluationServiceImplTest {
 							requirement)));
 		}
 		else {
-			when(evaluationRepository.findBySubmissionIdAndStatusNot(
+			org.mockito.Mockito.lenient().when(evaluationRepository.findBySubmissionIdAndStatusNot(
 					submission.getId(),
 					DocumentEvaluationStatus.ARCHIVED)).thenReturn(Optional.empty());
 		}

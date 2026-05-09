@@ -177,13 +177,13 @@ class SubmissionServiceImplTest {
 		when(submissionRepository.save(any(Submission.class)))
 				.thenAnswer(invocation -> invocation.getArgument(0));
 
-		SubmissionResponse response = service.createSubmission(
+		SubmissionResponse response = service.createDraftSubmission(
 				"student@example.com",
-				new CreateSubmissionRequest(30L, 20L, "SRS v2", null, null));
+				new CreateSubmissionDraftRequest(30L, 20L, "SRS v2", null));
 
 		assertThat(response.attemptNumber()).isEqualTo(2);
-		assertThat(response.status()).isEqualTo(SubmissionStatus.SUBMITTED);
-		assertThat(response.submittedAt()).isNotNull();
+		assertThat(response.status()).isEqualTo(SubmissionStatus.DRAFT);
+		assertThat(response.submittedAt()).isNull();
 	}
 
 	@Test
@@ -249,6 +249,44 @@ class SubmissionServiceImplTest {
 	}
 
 	@Test
+	void shouldRejectUpdatingSubmittedSubmissionAsDraft() {
+		User student = user(1L, "student@example.com", Role.STUDENT);
+		DocumentRequirementSet requirementSet = requirementSet(10L);
+		DocumentRequirement requirement = requirement(20L, requirementSet);
+		DocumentRequirementSetAssignment assignment = classAssignment(30L, requirementSet, RequirementSetAssignmentStatus.ACTIVE);
+		Submission submission = submission(40L, student, assignment, requirement, SubmissionStatus.SUBMITTED);
+		when(identityQueryService.getUserByEmail("student@example.com")).thenReturn(student);
+		when(submissionRepository.findById(40L)).thenReturn(Optional.of(submission));
+
+		assertThatThrownBy(() -> service.updateDraftSubmission(
+				"student@example.com",
+				40L,
+				new UpdateSubmissionDraftRequest("Updated", null, null)))
+				.isInstanceOf(BadRequestException.class)
+				.hasMessage("Only draft submissions can be updated");
+	}
+
+	@Test
+	void shouldRejectStudentUpdatingAnotherStudentsDraftSubmission() {
+		User owner = user(1L, "owner@example.com", Role.STUDENT);
+		User otherStudent = user(2L, "other@example.com", Role.STUDENT);
+		DocumentRequirementSet requirementSet = requirementSet(10L);
+		DocumentRequirement requirement = requirement(20L, requirementSet);
+		DocumentRequirementSetAssignment assignment = classAssignment(30L, requirementSet, RequirementSetAssignmentStatus.ACTIVE);
+		Submission submission = submission(40L, owner, assignment, requirement, SubmissionStatus.DRAFT);
+		when(identityQueryService.getUserByEmail("other@example.com")).thenReturn(otherStudent);
+		when(submissionRepository.findById(40L)).thenReturn(Optional.of(submission));
+
+		assertThatThrownBy(() -> service.updateDraftSubmission(
+				"other@example.com",
+				40L,
+				new UpdateSubmissionDraftRequest("Updated", null, null)))
+				.isInstanceOf(AccessDeniedException.class);
+
+		verify(submissionRepository, never()).save(any(Submission.class));
+	}
+
+	@Test
 	void shouldRejectStudentViewingAnotherStudentsSubmission() {
 		User owner = user(1L, "owner@example.com", Role.STUDENT);
 		User otherStudent = user(2L, "other@example.com", Role.STUDENT);
@@ -281,41 +319,36 @@ class SubmissionServiceImplTest {
 	}
 
 	@Test
-	void shouldSaveFileMetadataWithSubmittedSubmission() {
+	void shouldRejectDirectSubmittedSubmissionCreation() {
 		User student = user(1L, "student@example.com", Role.STUDENT);
 		DocumentRequirementSet requirementSet = requirementSet(10L);
 		DocumentRequirement requirement = requirement(20L, requirementSet);
 		requirement.getAllowedFileTypes().add(AllowedFileType.PDF);
 		DocumentRequirementSetAssignment assignment = classAssignment(30L, requirementSet, RequirementSetAssignmentStatus.ACTIVE);
-		stubValidSubmissionTarget(student, assignment, requirement, 0);
-		when(submissionRepository.save(any(Submission.class))).thenAnswer(invocation -> {
-			Submission submission = invocation.getArgument(0);
-			submission.setId(40L);
-			submission.getFiles().get(0).setId(70L);
-			return submission;
-		});
+		when(identityQueryService.getUserByEmail("student@example.com")).thenReturn(student);
+		when(assignmentRepository.findById(30L)).thenReturn(Optional.of(assignment));
+		when(requirementRepository.findById(20L)).thenReturn(Optional.of(requirement));
+		when(submissionRepository.findFirstByTypeAndSubmittedByIdAndAssignmentIdAndRequirementIdAndStatus(
+				SubmissionType.DOCUMENT,
+				1L,
+				30L,
+				20L,
+				SubmissionStatus.DRAFT)).thenReturn(Optional.empty());
 
-		SubmissionResponse response = service.createSubmission(
+		assertThatThrownBy(() -> service.createSubmission(
 				"student@example.com",
-				new CreateSubmissionRequest(
-						30L,
-						20L,
-						"SRS",
+				new CreateSubmissionRequest(30L, 20L, "SRS", null, List.of(new SubmissionFileMetadataRequest(
+						"srs.pdf",
+						"application/pdf",
+						1024L,
+						"pdf",
 						null,
-						List.of(new SubmissionFileMetadataRequest(
-								"srs.pdf",
-								"application/pdf",
-								1024L,
-								"pdf",
-								null,
-								null,
-								"checksum"))));
+						null,
+						"checksum")))))
+				.isInstanceOf(BadRequestException.class)
+				.hasMessage("Create a draft submission, upload at least one valid file, then submit the draft");
 
-		assertThat(response.files()).hasSize(1);
-		assertThat(response.files().get(0).id()).isEqualTo(70L);
-		assertThat(response.files().get(0).fileExtension()).isEqualTo("PDF");
-		assertThat(response.files().get(0).fileStatus()).isEqualTo(SubmissionFileStatus.PENDING_UPLOAD);
-		assertThat(response.files().get(0).uploadedAt()).isNull();
+		verify(submissionRepository, never()).save(any(Submission.class));
 	}
 
 	private void stubValidSubmissionTarget(

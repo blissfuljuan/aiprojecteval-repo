@@ -89,17 +89,8 @@ class SubmissionServiceImpl implements SubmissionService {
 		User currentUser = findUserByEmail(currentUserEmail);
 		SubmissionTarget target = validateSubmissionTarget(request.assignmentId(), request.requirementId());
 		rejectDuplicateDraft(currentUser, target.assignment(), target.requirement());
-
-		Submission submission = buildSubmission(
-				currentUser,
-				target,
-				request.submissionTitle(),
-				request.submissionNotes(),
-				SubmissionStatus.SUBMITTED);
-		submission.setSubmittedAt(LocalDateTime.now());
-		addFileMetadata(submission, request.files());
-
-		return SubmissionMapper.toResponse(submissionRepository.save(submission));
+		throw new BadRequestException(
+				"Create a draft submission, upload at least one valid file, then submit the draft");
 	}
 
 	@Override
