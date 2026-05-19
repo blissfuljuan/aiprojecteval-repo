@@ -5,6 +5,7 @@ import { PlaceholderPage } from "@/common/components/layout/PlaceholderPage";
 import { DashboardLayout } from "@/modules/dashboard/components/DashboardLayout";
 import { DashboardPage } from "@/modules/dashboard/pages/DashboardPage";
 import { documentRoutes } from "@/modules/document/routes";
+import { documentEvaluationRoutes } from "@/modules/document-evaluation/routes";
 import { deploymentValidationRoutes } from "@/modules/deployment-validation/routes";
 import { evaluationRoutes } from "@/modules/evaluation/routes";
 import { projectRoutes } from "@/modules/project/routes";
@@ -35,6 +36,7 @@ export const dashboardRoutes: RouteObject[] = [
           ...submissionRoutes,
           ...repositoryAnalysisRoutes,
           ...deploymentValidationRoutes,
+          ...documentEvaluationRoutes,
         ],
       },
       {

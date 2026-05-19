@@ -20,4 +20,23 @@ export const paths = {
   proposalCreate: "/proposals/create",
   proposalDetails: (proposalId: string | number) => `/proposals/${proposalId}`,
   proposalEdit: (proposalId: string | number) => `/proposals/${proposalId}/edit`,
+  documentEvaluation: "/document-evaluation",
+  documentEvaluationPresets: "/document-evaluation/presets",
+  documentEvaluationPresetCreate: "/document-evaluation/presets/new",
+  documentEvaluationPresetDetails: (presetId: string | number) => `/document-evaluation/presets/${presetId}`,
+  documentEvaluationPresetEdit: (presetId: string | number) => `/document-evaluation/presets/${presetId}/edit`,
+  documentEvaluationRequirementSets: "/document-evaluation/requirement-sets",
+  documentEvaluationRequirementSetCreate: "/document-evaluation/requirement-sets/new",
+  documentEvaluationRequirementSetDetails: (requirementSetId: string | number) =>
+    `/document-evaluation/requirement-sets/${requirementSetId}`,
+  documentEvaluationRequirementSetEdit: (requirementSetId: string | number) =>
+    `/document-evaluation/requirement-sets/${requirementSetId}/edit`,
+  documentEvaluationAssignments: "/document-evaluation/assignments",
+  documentEvaluationSubmissions: "/document-evaluation/submissions",
+  documentEvaluationCompleteness: "/document-evaluation/completeness",
+  documentEvaluationEvaluations: "/document-evaluation/evaluations",
+  documentEvaluationEvaluationDetails: (evaluationId: string | number) =>
+    `/document-evaluation/evaluations/${evaluationId}`,
+  documentEvaluationMyResults: "/document-evaluation/my-results",
+  documentEvaluationMyResultDetails: (resultId: string | number) => `/document-evaluation/my-results/${resultId}`,
 };

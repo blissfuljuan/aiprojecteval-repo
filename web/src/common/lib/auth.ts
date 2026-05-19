@@ -27,6 +27,7 @@ const protectedPathRoots = [
   paths.deploymentValidation,
   paths.reports,
   paths.settings,
+  paths.documentEvaluation,
 ];
 
 export function isPublicAuthPath(pathname: string) {
