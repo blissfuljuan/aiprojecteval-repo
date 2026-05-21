@@ -1,6 +1,8 @@
 package com.blissfuljuan.aiprojecteval.projectproposal.service;
 
+import com.blissfuljuan.aiprojecteval.document.dto.DocumentResponse;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.AdviserDecisionRequest;
+import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalDocumentLinkRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalCreateRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalResponse;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalUpdateRequest;
@@ -24,4 +26,15 @@ public interface ProjectProposalService {
 	ProjectProposalResponse adviserDecision(String currentUserEmail, Long id, AdviserDecisionRequest request);
 
 	ProjectProposalResponse instructorDecision(String currentUserEmail, Long id, ProposalDecisionRequest request);
+
+	List<DocumentResponse> getProposalDocuments(String currentUserEmail, Long id);
+
+	DocumentResponse submitProposalDocumentLink(
+			String currentUserEmail,
+			Long id,
+			ProjectProposalDocumentLinkRequest request);
+
+	void validateCanViewProposalDocuments(String currentUserEmail, Long id);
+
+	void validateCanManageProposalDocuments(String currentUserEmail, Long id);
 }

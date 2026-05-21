@@ -4,12 +4,19 @@ import com.blissfuljuan.aiprojecteval.common.exception.BadRequestException;
 import com.blissfuljuan.aiprojecteval.common.exception.ResourceNotFoundException;
 import com.blissfuljuan.aiprojecteval.courseclass.model.CourseClass;
 import com.blissfuljuan.aiprojecteval.courseclass.repository.CourseClassRepository;
+import com.blissfuljuan.aiprojecteval.document.dto.DocumentLinkSubmitRequest;
+import com.blissfuljuan.aiprojecteval.document.dto.DocumentResponse;
+import com.blissfuljuan.aiprojecteval.document.dto.DocumentSummaryResponse;
+import com.blissfuljuan.aiprojecteval.document.model.DocumentContextType;
+import com.blissfuljuan.aiprojecteval.document.model.DocumentType;
+import com.blissfuljuan.aiprojecteval.document.service.DocumentService;
 import com.blissfuljuan.aiprojecteval.identity.model.Role;
 import com.blissfuljuan.aiprojecteval.identity.model.User;
 import com.blissfuljuan.aiprojecteval.identity.repository.UserRepository;
 import com.blissfuljuan.aiprojecteval.project.model.Project;
 import com.blissfuljuan.aiprojecteval.project.repository.ProjectRepository;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.AdviserDecisionRequest;
+import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalDocumentLinkRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalCreateRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalResponse;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalUpdateRequest;
@@ -49,16 +56,19 @@ class ProjectProposalServiceImpl implements ProjectProposalService {
 	private final CourseClassRepository courseClassRepository;
 	private final UserRepository userRepository;
 	private final ProjectRepository projectRepository;
+	private final DocumentService documentService;
 
 	ProjectProposalServiceImpl(
 			ProjectProposalRepository projectProposalRepository,
 			CourseClassRepository courseClassRepository,
 			UserRepository userRepository,
-			ProjectRepository projectRepository) {
+			ProjectRepository projectRepository,
+			DocumentService documentService) {
 		this.projectProposalRepository = projectProposalRepository;
 		this.courseClassRepository = courseClassRepository;
 		this.userRepository = userRepository;
 		this.projectRepository = projectRepository;
+		this.documentService = documentService;
 	}
 
 	@Override
@@ -78,7 +88,7 @@ class ProjectProposalServiceImpl implements ProjectProposalService {
 		proposal.setSubmittedBy(currentUser);
 		proposal.setStatus(ProposalStatus.SUBMITTED);
 
-		return ProjectProposalResponse.fromEntity(projectProposalRepository.save(proposal));
+		return toResponse(projectProposalRepository.save(proposal));
 	}
 
 	@Override
@@ -88,7 +98,7 @@ class ProjectProposalServiceImpl implements ProjectProposalService {
 
 		return projectProposalRepository.findBySubmittedById(currentUser.getId())
 				.stream()
-				.map(ProjectProposalResponse::fromEntity)
+				.map(this::toResponse)
 				.toList();
 	}
 
@@ -106,7 +116,7 @@ class ProjectProposalServiceImpl implements ProjectProposalService {
 		// TODO: Restrict instructors to assigned classes and advisers to scheduled consultations when those modules exist.
 		return projectProposalRepository.findAll()
 				.stream()
-				.map(ProjectProposalResponse::fromEntity)
+				.map(this::toResponse)
 				.toList();
 	}
 
@@ -117,7 +127,7 @@ class ProjectProposalServiceImpl implements ProjectProposalService {
 		ProjectProposal proposal = findProposal(id);
 		validateCanView(currentUser, proposal);
 
-		return ProjectProposalResponse.fromEntity(proposal);
+		return toResponse(proposal);
 	}
 
 	@Override
@@ -138,7 +148,7 @@ class ProjectProposalServiceImpl implements ProjectProposalService {
 		proposal.setTechnologyStack(request.technologyStack());
 		proposal.setExpectedOutput(request.expectedOutput());
 
-		return ProjectProposalResponse.fromEntity(projectProposalRepository.save(proposal));
+		return toResponse(projectProposalRepository.save(proposal));
 	}
 
 	@Override
@@ -184,7 +194,7 @@ class ProjectProposalServiceImpl implements ProjectProposalService {
 			proposal.setAdviserRemarks(request.remarks());
 		}
 
-		return ProjectProposalResponse.fromEntity(projectProposalRepository.save(proposal));
+		return toResponse(projectProposalRepository.save(proposal));
 	}
 
 	@Override
@@ -215,7 +225,58 @@ class ProjectProposalServiceImpl implements ProjectProposalService {
 			proposal.setRejectedAt(now);
 		}
 
-		return ProjectProposalResponse.fromEntity(projectProposalRepository.save(proposal));
+		return toResponse(projectProposalRepository.save(proposal));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<DocumentResponse> getProposalDocuments(String currentUserEmail, Long id) {
+		User currentUser = findUserByEmail(currentUserEmail);
+		ProjectProposal proposal = findProposal(id);
+		validateCanView(currentUser, proposal);
+
+		return documentService.findByContextAndDocumentType(
+				DocumentContextType.PROJECT_PROPOSAL,
+				id,
+				DocumentType.PROJECT_PROPOSAL_DOCUMENT);
+	}
+
+	@Override
+	@Transactional
+	public DocumentResponse submitProposalDocumentLink(
+			String currentUserEmail,
+			Long id,
+			ProjectProposalDocumentLinkRequest request) {
+		User currentUser = findUserByEmail(currentUserEmail);
+		ProjectProposal proposal = findProposal(id);
+		validateCanModify(currentUser, proposal);
+
+		String title = request.title();
+		if (title == null || title.isBlank()) {
+			title = proposal.getTitle() + " Proposal Document";
+		}
+
+		return documentService.submitExternalLink(new DocumentLinkSubmitRequest(
+				DocumentContextType.PROJECT_PROPOSAL,
+				id,
+				DocumentType.PROJECT_PROPOSAL_DOCUMENT,
+				title,
+				request.description(),
+				request.documentUrl()));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public void validateCanViewProposalDocuments(String currentUserEmail, Long id) {
+		User currentUser = findUserByEmail(currentUserEmail);
+		validateCanView(currentUser, findProposal(id));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public void validateCanManageProposalDocuments(String currentUserEmail, Long id) {
+		User currentUser = findUserByEmail(currentUserEmail);
+		validateCanModify(currentUser, findProposal(id));
 	}
 
 	private void approveProposal(ProjectProposal proposal, LocalDateTime now) {
@@ -242,6 +303,18 @@ class ProjectProposalServiceImpl implements ProjectProposalService {
 			return proposal.getExpectedOutput();
 		}
 		return proposal.getProblemStatement();
+	}
+
+	private ProjectProposalResponse toResponse(ProjectProposal proposal) {
+		return ProjectProposalResponse.fromEntity(proposal, findLatestProposalDocumentSummary(proposal.getId()));
+	}
+
+	private DocumentSummaryResponse findLatestProposalDocumentSummary(Long proposalId) {
+		return documentService.findByContext(DocumentContextType.PROJECT_PROPOSAL, proposalId)
+				.stream()
+				.filter(document -> document.documentType() == DocumentType.PROJECT_PROPOSAL_DOCUMENT)
+				.findFirst()
+				.orElse(null);
 	}
 
 	private void applyCreateRequest(ProjectProposal proposal, ProjectProposalCreateRequest request) {

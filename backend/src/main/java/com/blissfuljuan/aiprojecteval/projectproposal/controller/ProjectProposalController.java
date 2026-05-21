@@ -1,7 +1,9 @@
 package com.blissfuljuan.aiprojecteval.projectproposal.controller;
 
 import com.blissfuljuan.aiprojecteval.common.response.ApiResponse;
+import com.blissfuljuan.aiprojecteval.document.dto.DocumentResponse;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.AdviserDecisionRequest;
+import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalDocumentLinkRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalCreateRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalResponse;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalUpdateRequest;
@@ -89,5 +91,20 @@ public class ProjectProposalController {
 			@Valid @RequestBody ProposalDecisionRequest request) {
 		return ApiResponse.ok("Project proposal decision recorded",
 				projectProposalService.instructorDecision(authentication.getName(), id, request));
+	}
+
+	@GetMapping("/{id}/documents")
+	public ApiResponse<List<DocumentResponse>> getDocuments(Authentication authentication, @PathVariable Long id) {
+		return ApiResponse.ok(projectProposalService.getProposalDocuments(authentication.getName(), id));
+	}
+
+	@PostMapping("/{id}/documents/link")
+	@PreAuthorize("hasAnyRole('STUDENT', 'ADMIN')")
+	public ApiResponse<DocumentResponse> submitDocumentLink(
+			Authentication authentication,
+			@PathVariable Long id,
+			@Valid @RequestBody ProjectProposalDocumentLinkRequest request) {
+		return ApiResponse.ok("Project proposal document link submitted",
+				projectProposalService.submitProposalDocumentLink(authentication.getName(), id, request));
 	}
 }

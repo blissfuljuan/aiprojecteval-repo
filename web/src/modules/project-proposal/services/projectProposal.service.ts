@@ -1,10 +1,12 @@
 import { isAxiosError } from "axios";
 import { api } from "@/common/lib/api";
+import type { GenericDocument } from "@/modules/document/types";
 import type { ApiResponse } from "@/modules/identity/types";
 import type {
   AdviserDecisionRequest,
   InstructorDecisionRequest,
   ProjectProposal,
+  ProjectProposalDocumentLinkRequest,
   ProposalCreateRequest,
   ProposalUpdateRequest,
 } from "@/modules/project-proposal/types";
@@ -54,6 +56,19 @@ async function instructorDecision(id: number, request: InstructorDecisionRequest
   return response.data.data;
 }
 
+async function getProposalDocuments(id: number): Promise<GenericDocument[]> {
+  const response = await api.get<ApiResponse<GenericDocument[]>>(`/api/project-proposals/${id}/documents`);
+  return response.data.data;
+}
+
+async function submitProposalDocumentLink(
+  id: number,
+  request: ProjectProposalDocumentLinkRequest,
+): Promise<GenericDocument> {
+  const response = await api.post<ApiResponse<GenericDocument>>(`/api/project-proposals/${id}/documents/link`, request);
+  return response.data.data;
+}
+
 function getErrorMessage(error: unknown): string {
   if (isAxiosError<ApiResponse<unknown>>(error)) {
     const data = error.response?.data;
@@ -72,5 +87,7 @@ export const projectProposalService = {
   deleteProposal,
   adviserDecision,
   instructorDecision,
+  getProposalDocuments,
+  submitProposalDocumentLink,
   getErrorMessage,
 };

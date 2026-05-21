@@ -1,3 +1,5 @@
+import type { GenericDocumentSummary } from "@/modules/document/types";
+
 export type ProposalStatus =
   | "DRAFT"
   | "SUBMITTED"
@@ -29,6 +31,7 @@ export type ProjectProposal = {
   approvedAt: string | null;
   rejectedAt: string | null;
   revisionRequestedAt: string | null;
+  latestDocument: GenericDocumentSummary | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -70,4 +73,10 @@ export type AdviserDecisionRequest = {
 export type InstructorDecisionRequest = {
   decision: "APPROVED" | "REVISION_REQUIRED" | "REJECTED";
   remarks: string;
+};
+
+export type ProjectProposalDocumentLinkRequest = {
+  title?: string;
+  description?: string;
+  documentUrl: string;
 };

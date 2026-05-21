@@ -8,6 +8,7 @@ import { Select } from "@/common/ui/shadcn/select";
 import { Separator } from "@/common/ui/shadcn/separator";
 import { Textarea } from "@/common/ui/shadcn/textarea";
 import { useAuth } from "@/modules/identity/context/AuthContext";
+import { ProjectProposalDocumentSection } from "@/modules/project-proposal/components/ProjectProposalDocumentSection";
 import { ProposalStatusBadge } from "@/modules/project-proposal/components/ProposalStatusBadge";
 import { useProposal } from "@/modules/project-proposal/hooks/useProposal";
 import { projectProposalService } from "@/modules/project-proposal/services/projectProposal.service";
@@ -185,6 +186,13 @@ export function ProposalDetailsPage() {
           )}
         </CardContent>
       </Card>
+
+      <ProjectProposalDocumentSection
+        proposalId={proposal.id}
+        proposalTitle={proposal.title}
+        canManage={canEdit}
+        onDocumentChanged={refresh}
+      />
 
       {showAdviserPanel && (
         <Card>

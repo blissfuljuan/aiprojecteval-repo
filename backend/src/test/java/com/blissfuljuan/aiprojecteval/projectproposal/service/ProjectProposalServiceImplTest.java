@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.blissfuljuan.aiprojecteval.common.exception.BadRequestException;
 import com.blissfuljuan.aiprojecteval.courseclass.model.CourseClass;
 import com.blissfuljuan.aiprojecteval.courseclass.repository.CourseClassRepository;
+import com.blissfuljuan.aiprojecteval.document.service.DocumentService;
 import com.blissfuljuan.aiprojecteval.identity.model.Role;
 import com.blissfuljuan.aiprojecteval.identity.model.User;
 import com.blissfuljuan.aiprojecteval.identity.repository.UserRepository;
@@ -47,6 +49,9 @@ class ProjectProposalServiceImplTest {
 	@Mock
 	private ProjectRepository projectRepository;
 
+	@Mock
+	private DocumentService documentService;
+
 	private ProjectProposalServiceImpl projectProposalService;
 
 	@BeforeEach
@@ -55,7 +60,9 @@ class ProjectProposalServiceImplTest {
 				projectProposalRepository,
 				courseClassRepository,
 				userRepository,
-				projectRepository);
+				projectRepository,
+				documentService);
+		lenient().when(documentService.findByContext(any(), any())).thenReturn(java.util.List.of());
 	}
 
 	@Test
