@@ -21,6 +21,13 @@ app:
   jwt:
     secret: ${JWT_SECRET:replace-this-with-a-long-development-secret-key-at-least-32-characters}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  ai:
+    provider: ${APP_AI_PROVIDER:MOCK}
+    model: ${APP_AI_MODEL:mock-project-proposal-evaluator-v1}
+    api-key: ${APP_AI_API_KEY:}
+    temperature: ${APP_AI_TEMPERATURE:0.2}
+    max-output-tokens: ${APP_AI_MAX_OUTPUT_TOKENS:2048}
+    timeout-seconds: ${APP_AI_TIMEOUT_SECONDS:30}
 
 document:
   google-drive:

@@ -6,6 +6,7 @@ import com.blissfuljuan.aiprojecteval.document.dto.DocumentSummaryResponse;
 import com.blissfuljuan.aiprojecteval.document.dto.DocumentVersionResponse;
 import com.blissfuljuan.aiprojecteval.document.model.DocumentContextType;
 import com.blissfuljuan.aiprojecteval.document.model.DocumentType;
+import com.blissfuljuan.aiprojecteval.document.model.DocumentVersion;
 import java.util.List;
 
 public interface DocumentService {
@@ -22,6 +23,8 @@ public interface DocumentService {
 			DocumentType documentType);
 
 	List<DocumentVersionResponse> findVersions(Long documentId);
+
+	DocumentVersion findVersionById(Long versionId);
 
 	DocumentVersionResponse validateVersion(Long documentId, Long versionId);
 

@@ -132,6 +132,12 @@ class DocumentServiceImpl implements DocumentService {
 	}
 
 	@Override
+	@Transactional(readOnly = true)
+	public DocumentVersion findVersionById(Long versionId) {
+		return findVersion(versionId);
+	}
+
+	@Override
 	@Transactional
 	public DocumentVersionResponse validateVersion(Long documentId, Long versionId) {
 		Document document = findDocument(documentId);
