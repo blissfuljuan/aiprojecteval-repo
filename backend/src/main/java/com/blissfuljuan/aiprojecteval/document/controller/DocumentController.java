@@ -45,6 +45,18 @@ public class DocumentController {
 		return ApiResponse.ok(documentService.findVersions(documentId));
 	}
 
+	@PostMapping("/{documentId}/versions/{versionId}/validate")
+	public ApiResponse<DocumentVersionResponse> validateVersion(
+			@PathVariable Long documentId,
+			@PathVariable Long versionId) {
+		return ApiResponse.ok("Document version validated", documentService.validateVersion(documentId, versionId));
+	}
+
+	@PostMapping("/{documentId}/validate-current")
+	public ApiResponse<DocumentResponse> validateCurrentVersion(@PathVariable Long documentId) {
+		return ApiResponse.ok("Current document version validated", documentService.validateCurrentVersion(documentId));
+	}
+
 	@GetMapping("/context/{contextType}/{contextId}")
 	public ApiResponse<List<DocumentSummaryResponse>> findByContext(
 			@PathVariable DocumentContextType contextType,

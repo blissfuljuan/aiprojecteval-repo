@@ -16,6 +16,9 @@ import com.blissfuljuan.aiprojecteval.document.model.DocumentValidationStatus;
 import com.blissfuljuan.aiprojecteval.document.model.DocumentVersion;
 import com.blissfuljuan.aiprojecteval.document.repository.DocumentRepository;
 import com.blissfuljuan.aiprojecteval.document.repository.DocumentVersionRepository;
+import com.blissfuljuan.aiprojecteval.document.validation.DocumentLinkValidationService;
+import com.blissfuljuan.aiprojecteval.document.validation.DocumentValidationResult;
+import com.blissfuljuan.aiprojecteval.document.validation.GoogleDriveProperties;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.security.core.Authentication;
@@ -29,14 +32,20 @@ class DocumentServiceImpl implements DocumentService {
 	private final DocumentRepository documentRepository;
 	private final DocumentVersionRepository documentVersionRepository;
 	private final DocumentMapper documentMapper;
+	private final DocumentLinkValidationService documentLinkValidationService;
+	private final GoogleDriveProperties googleDriveProperties;
 
 	DocumentServiceImpl(
 			DocumentRepository documentRepository,
 			DocumentVersionRepository documentVersionRepository,
-			DocumentMapper documentMapper) {
+			DocumentMapper documentMapper,
+			DocumentLinkValidationService documentLinkValidationService,
+			GoogleDriveProperties googleDriveProperties) {
 		this.documentRepository = documentRepository;
 		this.documentVersionRepository = documentVersionRepository;
 		this.documentMapper = documentMapper;
+		this.documentLinkValidationService = documentLinkValidationService;
+		this.googleDriveProperties = googleDriveProperties;
 	}
 
 	@Override
@@ -58,6 +67,10 @@ class DocumentServiceImpl implements DocumentService {
 				.orElse(null);
 		DocumentVersion version = createExternalLinkVersion(document, request, latestVersion, currentUserId);
 		version = documentVersionRepository.save(version);
+		if (googleDriveProperties.isValidationEnabled()) {
+			applyValidationResult(version, documentLinkValidationService.validate(version));
+			version = documentVersionRepository.save(version);
+		}
 
 		document.setCurrentVersionId(version.getId());
 		document = documentRepository.save(document);
@@ -94,6 +107,34 @@ class DocumentServiceImpl implements DocumentService {
 				.stream()
 				.map(documentMapper::toVersionResponse)
 				.toList();
+	}
+
+	@Override
+	@Transactional
+	public DocumentVersionResponse validateVersion(Long documentId, Long versionId) {
+		Document document = findDocument(documentId);
+		DocumentVersion version = findVersion(versionId);
+		ensureVersionBelongsToDocument(document, version);
+
+		applyValidationResult(version, documentLinkValidationService.validate(version));
+		version = documentVersionRepository.save(version);
+
+		return documentMapper.toVersionResponse(version);
+	}
+
+	@Override
+	@Transactional
+	public DocumentResponse validateCurrentVersion(Long documentId) {
+		Document document = findDocument(documentId);
+		DocumentVersion currentVersion = findCurrentVersion(document);
+		if (currentVersion == null) {
+			throw new ResourceNotFoundException("Document version not found");
+		}
+
+		applyValidationResult(currentVersion, documentLinkValidationService.validate(currentVersion));
+		currentVersion = documentVersionRepository.save(currentVersion);
+
+		return documentMapper.toResponse(document, currentVersion);
 	}
 
 	@Override
@@ -147,6 +188,28 @@ class DocumentServiceImpl implements DocumentService {
 
 		return documentVersionRepository.findTopByDocumentIdOrderByVersionNumberDesc(document.getId())
 				.orElse(null);
+	}
+
+	private DocumentVersion findVersion(Long versionId) {
+		return documentVersionRepository.findById(versionId)
+				.orElseThrow(() -> new ResourceNotFoundException("Document version not found"));
+	}
+
+	private void ensureVersionBelongsToDocument(Document document, DocumentVersion version) {
+		if (!document.getId().equals(version.getDocument().getId())) {
+			throw new ResourceNotFoundException("Document version not found");
+		}
+	}
+
+	private void applyValidationResult(DocumentVersion version, DocumentValidationResult result) {
+		version.setProvider(result.provider());
+		version.setExternalFileId(result.externalFileId());
+		version.setFileName(result.fileName());
+		version.setMimeType(result.mimeType());
+		version.setFileSizeBytes(result.fileSizeBytes());
+		version.setValidationStatus(result.status());
+		version.setValidationMessage(result.message());
+		version.setValidatedAt(LocalDateTime.now());
 	}
 
 	private Long resolveCurrentUserId() {

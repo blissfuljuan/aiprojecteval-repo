@@ -19,6 +19,8 @@ import com.blissfuljuan.aiprojecteval.document.model.DocumentValidationStatus;
 import com.blissfuljuan.aiprojecteval.document.model.DocumentVersion;
 import com.blissfuljuan.aiprojecteval.document.repository.DocumentRepository;
 import com.blissfuljuan.aiprojecteval.document.repository.DocumentVersionRepository;
+import com.blissfuljuan.aiprojecteval.document.validation.DocumentLinkValidationService;
+import com.blissfuljuan.aiprojecteval.document.validation.GoogleDriveProperties;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,15 +41,22 @@ class DocumentServiceImplTest {
 	@Mock
 	private DocumentVersionRepository documentVersionRepository;
 
+	@Mock
+	private DocumentLinkValidationService documentLinkValidationService;
+
 	private DocumentServiceImpl documentService;
+	private GoogleDriveProperties googleDriveProperties;
 
 	@BeforeEach
 	void setUp() {
 		SecurityContextHolder.clearContext();
+		googleDriveProperties = new GoogleDriveProperties();
 		documentService = new DocumentServiceImpl(
 				documentRepository,
 				documentVersionRepository,
-				new DocumentMapper());
+				new DocumentMapper(),
+				documentLinkValidationService,
+				googleDriveProperties);
 	}
 
 	@Test
