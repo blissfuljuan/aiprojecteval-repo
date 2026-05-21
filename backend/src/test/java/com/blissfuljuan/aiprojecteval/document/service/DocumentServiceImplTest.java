@@ -1,12 +1,18 @@
 package com.blissfuljuan.aiprojecteval.document.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.blissfuljuan.aiprojecteval.common.exception.BadRequestException;
 import com.blissfuljuan.aiprojecteval.document.dto.DocumentLinkSubmitRequest;
 import com.blissfuljuan.aiprojecteval.document.dto.DocumentResponse;
+import com.blissfuljuan.aiprojecteval.document.dto.DocumentVersionResponse;
+import com.blissfuljuan.aiprojecteval.document.extraction.DocumentTextExtractionResult;
+import com.blissfuljuan.aiprojecteval.document.extraction.DocumentTextExtractionService;
 import com.blissfuljuan.aiprojecteval.document.mapper.DocumentMapper;
 import com.blissfuljuan.aiprojecteval.document.model.Document;
 import com.blissfuljuan.aiprojecteval.document.model.DocumentContextType;
@@ -44,6 +50,9 @@ class DocumentServiceImplTest {
 	@Mock
 	private DocumentLinkValidationService documentLinkValidationService;
 
+	@Mock
+	private DocumentTextExtractionService documentTextExtractionService;
+
 	private DocumentServiceImpl documentService;
 	private GoogleDriveProperties googleDriveProperties;
 
@@ -56,7 +65,8 @@ class DocumentServiceImplTest {
 				documentVersionRepository,
 				new DocumentMapper(),
 				documentLinkValidationService,
-				googleDriveProperties);
+				googleDriveProperties,
+				documentTextExtractionService);
 	}
 
 	@Test
@@ -152,6 +162,82 @@ class DocumentServiceImplTest {
 		assertThat(versionCaptor.getValue().getSubmittedByUserId()).isEqualTo(7L);
 	}
 
+	@Test
+	void shouldBlockExtractionWhenValidationStatusIsNotValid() {
+		Document existingDocument = document();
+		DocumentVersion version = version(existingDocument, 1);
+		when(documentRepository.findById(100L)).thenReturn(Optional.of(existingDocument));
+		when(documentVersionRepository.findById(202L)).thenReturn(Optional.of(version));
+
+		assertThatThrownBy(() -> documentService.extractVersionText(100L, 202L))
+				.isInstanceOf(BadRequestException.class)
+				.hasMessageContaining("Only VALID document versions can be extracted");
+	}
+
+	@Test
+	void shouldExtractValidatedVersionText() {
+		Document existingDocument = document();
+		DocumentVersion version = validVersion(existingDocument);
+		when(documentRepository.findById(100L)).thenReturn(Optional.of(existingDocument));
+		when(documentVersionRepository.findById(202L)).thenReturn(Optional.of(version));
+		when(documentVersionRepository.saveAndFlush(version)).thenReturn(version);
+		when(documentTextExtractionService.extract(version)).thenReturn(new DocumentTextExtractionResult(
+				"Proposal text for evaluation",
+				4));
+		when(documentVersionRepository.save(version)).thenReturn(version);
+
+		DocumentVersionResponse response = documentService.extractVersionText(100L, 202L);
+
+		assertThat(response.extractionStatus()).isEqualTo(DocumentExtractionStatus.EXTRACTED);
+		assertThat(response.wordCount()).isEqualTo(4);
+		assertThat(response.extractionErrorMessage()).isNull();
+		assertThat(response.extractedAt()).isNotNull();
+		assertThat(version.getExtractedText()).isEqualTo("Proposal text for evaluation");
+		verify(documentVersionRepository).saveAndFlush(version);
+	}
+
+	@Test
+	void shouldMarkExtractionFailedWhenExtractorFails() {
+		Document existingDocument = document();
+		DocumentVersion version = validVersion(existingDocument);
+		when(documentRepository.findById(100L)).thenReturn(Optional.of(existingDocument));
+		when(documentVersionRepository.findById(202L)).thenReturn(Optional.of(version));
+		when(documentVersionRepository.saveAndFlush(version)).thenReturn(version);
+		when(documentTextExtractionService.extract(version)).thenThrow(new RuntimeException("Unreadable PDF"));
+		when(documentVersionRepository.save(version)).thenReturn(version);
+
+		DocumentVersionResponse response = documentService.extractVersionText(100L, 202L);
+
+		assertThat(response.extractionStatus()).isEqualTo(DocumentExtractionStatus.FAILED);
+		assertThat(response.wordCount()).isNull();
+		assertThat(response.extractionErrorMessage()).isEqualTo("Unreadable PDF");
+		assertThat(version.getExtractedText()).isNull();
+	}
+
+	@Test
+	void shouldAllowSafeReExtraction() {
+		Document existingDocument = document();
+		DocumentVersion version = validVersion(existingDocument);
+		version.setExtractionStatus(DocumentExtractionStatus.EXTRACTED);
+		version.setExtractedText("Old extracted text");
+		version.setWordCount(3);
+		version.setExtractedAt(LocalDateTime.now().minusDays(1));
+		when(documentRepository.findById(100L)).thenReturn(Optional.of(existingDocument));
+		when(documentVersionRepository.findById(202L)).thenReturn(Optional.of(version));
+		when(documentVersionRepository.saveAndFlush(version)).thenReturn(version);
+		when(documentTextExtractionService.extract(version)).thenReturn(new DocumentTextExtractionResult(
+				"Fresh extracted text",
+				3));
+		when(documentVersionRepository.save(version)).thenReturn(version);
+
+		DocumentVersionResponse response = documentService.extractVersionText(100L, 202L);
+
+		assertThat(response.extractionStatus()).isEqualTo(DocumentExtractionStatus.EXTRACTED);
+		assertThat(version.getExtractedText()).isEqualTo("Fresh extracted text");
+		assertThat(version.getExtractionErrorMessage()).isNull();
+		verify(documentVersionRepository, times(1)).saveAndFlush(version);
+	}
+
 	private DocumentLinkSubmitRequest request(String documentUrl) {
 		return new DocumentLinkSubmitRequest(
 				DocumentContextType.PROJECT_PROPOSAL,
@@ -190,6 +276,15 @@ class DocumentServiceImplTest {
 		version.setSubmittedAt(LocalDateTime.now());
 		version.setCreatedAt(LocalDateTime.now());
 		version.setUpdatedAt(LocalDateTime.now());
+		return version;
+	}
+
+	private DocumentVersion validVersion(Document document) {
+		DocumentVersion version = version(document, 1);
+		version.setProvider(DocumentProvider.GOOGLE_DRIVE);
+		version.setExternalFileId("file-123");
+		version.setMimeType("application/pdf");
+		version.setValidationStatus(DocumentValidationStatus.VALID);
 		return version;
 	}
 }

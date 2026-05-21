@@ -1,10 +1,13 @@
 package com.blissfuljuan.aiprojecteval.document.service;
 
+import com.blissfuljuan.aiprojecteval.common.exception.BadRequestException;
 import com.blissfuljuan.aiprojecteval.common.exception.ResourceNotFoundException;
 import com.blissfuljuan.aiprojecteval.document.dto.DocumentLinkSubmitRequest;
 import com.blissfuljuan.aiprojecteval.document.dto.DocumentResponse;
 import com.blissfuljuan.aiprojecteval.document.dto.DocumentSummaryResponse;
 import com.blissfuljuan.aiprojecteval.document.dto.DocumentVersionResponse;
+import com.blissfuljuan.aiprojecteval.document.extraction.DocumentTextExtractionResult;
+import com.blissfuljuan.aiprojecteval.document.extraction.DocumentTextExtractionService;
 import com.blissfuljuan.aiprojecteval.document.mapper.DocumentMapper;
 import com.blissfuljuan.aiprojecteval.document.model.Document;
 import com.blissfuljuan.aiprojecteval.document.model.DocumentContextType;
@@ -34,18 +37,21 @@ class DocumentServiceImpl implements DocumentService {
 	private final DocumentMapper documentMapper;
 	private final DocumentLinkValidationService documentLinkValidationService;
 	private final GoogleDriveProperties googleDriveProperties;
+	private final DocumentTextExtractionService documentTextExtractionService;
 
 	DocumentServiceImpl(
 			DocumentRepository documentRepository,
 			DocumentVersionRepository documentVersionRepository,
 			DocumentMapper documentMapper,
 			DocumentLinkValidationService documentLinkValidationService,
-			GoogleDriveProperties googleDriveProperties) {
+			GoogleDriveProperties googleDriveProperties,
+			DocumentTextExtractionService documentTextExtractionService) {
 		this.documentRepository = documentRepository;
 		this.documentVersionRepository = documentVersionRepository;
 		this.documentMapper = documentMapper;
 		this.documentLinkValidationService = documentLinkValidationService;
 		this.googleDriveProperties = googleDriveProperties;
+		this.documentTextExtractionService = documentTextExtractionService;
 	}
 
 	@Override
@@ -119,6 +125,38 @@ class DocumentServiceImpl implements DocumentService {
 		applyValidationResult(version, documentLinkValidationService.validate(version));
 		version = documentVersionRepository.save(version);
 
+		return documentMapper.toVersionResponse(version);
+	}
+
+	@Override
+	@Transactional
+	public DocumentVersionResponse extractVersionText(Long documentId, Long versionId) {
+		Document document = findDocument(documentId);
+		DocumentVersion version = findVersion(versionId);
+		ensureVersionBelongsToDocument(document, version);
+		if (version.getValidationStatus() != DocumentValidationStatus.VALID) {
+			throw new BadRequestException("Only VALID document versions can be extracted");
+		}
+
+		markExtractionProcessing(version);
+		version = documentVersionRepository.saveAndFlush(version);
+
+		try {
+			DocumentTextExtractionResult result = documentTextExtractionService.extract(version);
+			version.setExtractedText(result.extractedText());
+			version.setWordCount(result.wordCount());
+			version.setExtractedAt(LocalDateTime.now());
+			version.setExtractionErrorMessage(null);
+			version.setExtractionStatus(DocumentExtractionStatus.EXTRACTED);
+		} catch (Exception exception) {
+			version.setExtractedText(null);
+			version.setWordCount(null);
+			version.setExtractedAt(null);
+			version.setExtractionErrorMessage(messageOf(exception));
+			version.setExtractionStatus(DocumentExtractionStatus.FAILED);
+		}
+
+		version = documentVersionRepository.save(version);
 		return documentMapper.toVersionResponse(version);
 	}
 
@@ -210,6 +248,21 @@ class DocumentServiceImpl implements DocumentService {
 		version.setValidationStatus(result.status());
 		version.setValidationMessage(result.message());
 		version.setValidatedAt(LocalDateTime.now());
+	}
+
+	private void markExtractionProcessing(DocumentVersion version) {
+		version.setExtractionStatus(DocumentExtractionStatus.PROCESSING);
+		version.setExtractedText(null);
+		version.setWordCount(null);
+		version.setExtractedAt(null);
+		version.setExtractionErrorMessage(null);
+	}
+
+	private String messageOf(Exception exception) {
+		if (exception.getMessage() == null || exception.getMessage().isBlank()) {
+			return "Document text extraction failed";
+		}
+		return exception.getMessage();
 	}
 
 	private Long resolveCurrentUserId() {

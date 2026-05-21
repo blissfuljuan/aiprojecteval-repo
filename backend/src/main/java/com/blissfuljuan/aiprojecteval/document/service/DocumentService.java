@@ -19,6 +19,8 @@ public interface DocumentService {
 
 	DocumentVersionResponse validateVersion(Long documentId, Long versionId);
 
+	DocumentVersionResponse extractVersionText(Long documentId, Long versionId);
+
 	DocumentResponse validateCurrentVersion(Long documentId);
 
 	void delete(Long documentId);
