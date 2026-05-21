@@ -15,6 +15,8 @@ public interface DocumentRequirementSetAssignmentRepository
 
 	List<DocumentRequirementSetAssignment> findByProjectId(Long projectId);
 
+	List<DocumentRequirementSetAssignment> findByStatus(RequirementSetAssignmentStatus status);
+
 	List<DocumentRequirementSetAssignment> findByCourseClassIdAndStatus(
 			Long courseClassId,
 			RequirementSetAssignmentStatus status);

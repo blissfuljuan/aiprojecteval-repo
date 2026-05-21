@@ -10,6 +10,7 @@ import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.DeactivateR
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentRequirementSetAssignmentResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentRequirementSetAssignmentSummaryResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentRequirementSetResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.MyAssignedDocumentRequirementResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.ConfigurationStatus;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.RequirementSetAssignmentStatus;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.RequirementSetAssignmentType;
@@ -24,8 +25,14 @@ import com.blissfuljuan.aiprojecteval.identity.model.User;
 import com.blissfuljuan.aiprojecteval.identity.repository.UserRepository;
 import com.blissfuljuan.aiprojecteval.project.model.Project;
 import com.blissfuljuan.aiprojecteval.project.repository.ProjectRepository;
+import com.blissfuljuan.aiprojecteval.submission.enums.SubmissionStatus;
+import com.blissfuljuan.aiprojecteval.submission.enums.SubmissionType;
+import com.blissfuljuan.aiprojecteval.submission.model.Submission;
+import com.blissfuljuan.aiprojecteval.submission.repository.SubmissionRepository;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,18 +45,21 @@ class DocumentRequirementSetAssignmentServiceImpl implements DocumentRequirement
 	private final CourseClassRepository courseClassRepository;
 	private final ProjectRepository projectRepository;
 	private final UserRepository userRepository;
+	private final SubmissionRepository submissionRepository;
 
 	DocumentRequirementSetAssignmentServiceImpl(
 			DocumentRequirementSetAssignmentRepository assignmentRepository,
 			DocumentRequirementSetRepository requirementSetRepository,
 			CourseClassRepository courseClassRepository,
 			ProjectRepository projectRepository,
-			UserRepository userRepository) {
+			UserRepository userRepository,
+			SubmissionRepository submissionRepository) {
 		this.assignmentRepository = assignmentRepository;
 		this.requirementSetRepository = requirementSetRepository;
 		this.courseClassRepository = courseClassRepository;
 		this.projectRepository = projectRepository;
 		this.userRepository = userRepository;
+		this.submissionRepository = submissionRepository;
 	}
 
 	@Override
@@ -118,6 +128,26 @@ class DocumentRequirementSetAssignmentServiceImpl implements DocumentRequirement
 		checkCanViewAssignment(currentUser, assignment);
 
 		return DocumentRequirementSetAssignmentMapper.toResponse(assignment);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<MyAssignedDocumentRequirementResponse> getMyAssignedDocumentRequirements(String currentUserEmail) {
+		User currentUser = findUserByEmail(currentUserEmail);
+		List<Submission> userSubmissions = submissionRepository.findByTypeAndSubmittedByIdOrderByCreatedAtDesc(
+				SubmissionType.DOCUMENT,
+				currentUser.getId());
+
+		return visibleStudentAssignments(currentUser)
+				.stream()
+				.flatMap(assignment -> assignment.getRequirementSet().getDocumentRequirements()
+						.stream()
+						.map(requirement -> toMyAssignedRequirementResponse(assignment, requirement, userSubmissions)))
+				.sorted(Comparator
+						.comparing(MyAssignedDocumentRequirementResponse::requirementSetName, Comparator.nullsLast(String::compareToIgnoreCase))
+						.thenComparing(MyAssignedDocumentRequirementResponse::sortOrder, Comparator.nullsLast(Integer::compareTo))
+						.thenComparing(MyAssignedDocumentRequirementResponse::documentRequirementId))
+				.toList();
 	}
 
 	@Override
@@ -254,6 +284,77 @@ class DocumentRequirementSetAssignmentServiceImpl implements DocumentRequirement
 			return assignmentRepository.findByProjectId(projectId);
 		}
 		return assignmentRepository.findByProjectIdAndStatus(projectId, status);
+	}
+
+	private List<DocumentRequirementSetAssignment> visibleStudentAssignments(User user) {
+		if (user.getRole() == Role.ADMIN || user.getRole() == Role.INSTRUCTOR) {
+			return assignmentRepository.findByStatus(RequirementSetAssignmentStatus.ACTIVE)
+					.stream()
+					.filter(assignment -> canViewAssignment(user, assignment))
+					.toList();
+		}
+
+		List<Long> ownedProjectIds = projectRepository.findByOwnerUserIdOrderByCreatedAtDesc(user.getId())
+				.stream()
+				.map(Project::getId)
+				.toList();
+
+		// TODO: include class-level assignments after class enrollment or project membership exists.
+		return ownedProjectIds.stream()
+				.flatMap(projectId -> assignmentRepository.findByProjectIdAndStatus(
+								projectId,
+								RequirementSetAssignmentStatus.ACTIVE)
+						.stream())
+				.toList();
+	}
+
+	private MyAssignedDocumentRequirementResponse toMyAssignedRequirementResponse(
+			DocumentRequirementSetAssignment assignment,
+			com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirement requirement,
+			List<Submission> userSubmissions) {
+		Submission latestSubmission = latestSubmission(userSubmissions, assignment.getId(), requirement.getId());
+		Submission existingDraft = userSubmissions.stream()
+				.filter(submission -> matchesAssignmentRequirement(submission, assignment.getId(), requirement.getId()))
+				.filter(submission -> submission.getStatus() == SubmissionStatus.DRAFT)
+				.findFirst()
+				.orElse(null);
+		CourseClass courseClass = assignment.getCourseClass();
+		Project project = assignment.getProject();
+
+		return new MyAssignedDocumentRequirementResponse(
+				assignment.getId(),
+				assignment.getRequirementSet().getId(),
+				assignment.getRequirementSet().getName(),
+				assignment.getRequirementSet().getDescription(),
+				assignment.getAssignmentType(),
+				courseClass == null ? null : courseClass.getId(),
+				courseClass == null ? null : courseClass.getName(),
+				project == null ? null : project.getId(),
+				project == null ? null : project.getTitle(),
+				requirement.getId(),
+				requirement.getName(),
+				requirement.getDescription(),
+				requirement.isRequired(),
+				requirement.getAllowedFileTypes() == null ? List.of() : List.copyOf(requirement.getAllowedFileTypes()),
+				requirement.getSortOrder(),
+				existingDraft == null ? null : existingDraft.getId(),
+				latestSubmission == null ? null : latestSubmission.getId(),
+				latestSubmission == null ? null : latestSubmission.getStatus(),
+				latestSubmission == null ? null : latestSubmission.getSubmittedAt(),
+				latestSubmission == null ? null : latestSubmission.getAttemptNumber()
+		);
+	}
+
+	private Submission latestSubmission(List<Submission> submissions, Long assignmentId, Long requirementId) {
+		return submissions.stream()
+				.filter(submission -> matchesAssignmentRequirement(submission, assignmentId, requirementId))
+				.findFirst()
+				.orElse(null);
+	}
+
+	private boolean matchesAssignmentRequirement(Submission submission, Long assignmentId, Long requirementId) {
+		return Objects.equals(submission.getAssignmentId(), assignmentId)
+				&& Objects.equals(submission.getRequirementId(), requirementId);
 	}
 
 	private DocumentRequirementSetAssignment findAssignment(Long id) {

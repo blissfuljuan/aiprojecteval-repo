@@ -33,6 +33,9 @@ export const paths = {
     `/document-evaluation/requirement-sets/${requirementSetId}/edit`,
   documentEvaluationAssignments: "/document-evaluation/assignments",
   documentEvaluationSubmissions: "/document-evaluation/submissions",
+  documentEvaluationSubmissionCreate: "/document-evaluation/submissions/new",
+  documentEvaluationSubmissionDetails: (submissionId: string | number) =>
+    `/document-evaluation/submissions/${submissionId}`,
   documentEvaluationCompleteness: "/document-evaluation/completeness",
   documentEvaluationEvaluations: "/document-evaluation/evaluations",
   documentEvaluationEvaluationDetails: (evaluationId: string | number) =>

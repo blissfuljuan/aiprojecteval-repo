@@ -6,6 +6,7 @@ import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.DeactivateR
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentRequirementSetAssignmentResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentRequirementSetAssignmentSummaryResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentRequirementSetResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.MyAssignedDocumentRequirementResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.RequirementSetAssignmentStatus;
 import java.util.List;
 
@@ -20,6 +21,8 @@ public interface DocumentRequirementSetAssignmentService {
 			AssignRequirementSetToProjectRequest request);
 
 	DocumentRequirementSetAssignmentResponse getAssignmentById(String currentUserEmail, Long id);
+
+	List<MyAssignedDocumentRequirementResponse> getMyAssignedDocumentRequirements(String currentUserEmail);
 
 	List<DocumentRequirementSetAssignmentSummaryResponse> getAssignmentsByClass(
 			String currentUserEmail,

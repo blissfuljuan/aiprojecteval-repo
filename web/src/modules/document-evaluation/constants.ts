@@ -12,6 +12,8 @@ export const documentEvaluationPaths = {
   requirementSetEdit: (requirementSetId: string | number) => `/document-evaluation/requirement-sets/${requirementSetId}/edit`,
   assignments: "/document-evaluation/assignments",
   submissions: "/document-evaluation/submissions",
+  submissionCreate: "/document-evaluation/submissions/new",
+  submissionDetails: (submissionId: string | number) => `/document-evaluation/submissions/${submissionId}`,
   completeness: "/document-evaluation/completeness",
   evaluations: "/document-evaluation/evaluations",
   evaluationDetails: (evaluationId: string | number) => `/document-evaluation/evaluations/${evaluationId}`,

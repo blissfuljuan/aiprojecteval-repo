@@ -1,6 +1,13 @@
 import { isAxiosError } from "axios";
 import { api } from "@/common/lib/api";
 import type { ApiResponse } from "@/modules/identity/types";
+import type {
+  CreateSubmissionDraftRequest,
+  DocumentSubmission,
+  DocumentSubmissionSummary,
+  SubmissionFileResponse,
+  UpdateSubmissionDraftRequest,
+} from "@/modules/submission/types";
 
 type QueryParams = Record<string, string | number | boolean | null | undefined>;
 type RequestBody = Record<string, unknown>;
@@ -9,28 +16,31 @@ function unwrap<T>(response: { data: ApiResponse<T> }): T {
   return response.data.data;
 }
 
-async function createSubmissionDraft(request: RequestBody): Promise<unknown> {
-  return unwrap(await api.post<ApiResponse<unknown>>("/api/submissions/draft", request));
+async function createSubmissionDraft(request: CreateSubmissionDraftRequest): Promise<DocumentSubmission> {
+  return unwrap(await api.post<ApiResponse<DocumentSubmission>>("/api/submissions/draft", request));
 }
 
 async function createSubmission(request: RequestBody): Promise<unknown> {
   return unwrap(await api.post<ApiResponse<unknown>>("/api/submissions", request));
 }
 
-async function updateSubmissionDraft(submissionId: number, request: RequestBody): Promise<unknown> {
-  return unwrap(await api.put<ApiResponse<unknown>>(`/api/submissions/${submissionId}/draft`, request));
+async function updateSubmissionDraft(
+  submissionId: number,
+  request: UpdateSubmissionDraftRequest,
+): Promise<DocumentSubmission> {
+  return unwrap(await api.put<ApiResponse<DocumentSubmission>>(`/api/submissions/${submissionId}/draft`, request));
 }
 
-async function submitDraft(submissionId: number): Promise<unknown> {
-  return unwrap(await api.patch<ApiResponse<unknown>>(`/api/submissions/${submissionId}/submit`));
+async function submitDraft(submissionId: number): Promise<DocumentSubmission> {
+  return unwrap(await api.patch<ApiResponse<DocumentSubmission>>(`/api/submissions/${submissionId}/submit`));
 }
 
-async function listMySubmissions(params?: QueryParams): Promise<unknown[]> {
-  return unwrap(await api.get<ApiResponse<unknown[]>>("/api/submissions/my", { params }));
+async function listMySubmissions(params?: QueryParams): Promise<DocumentSubmissionSummary[]> {
+  return unwrap(await api.get<ApiResponse<DocumentSubmissionSummary[]>>("/api/submissions/my", { params }));
 }
 
-async function getSubmissionById(submissionId: number): Promise<unknown> {
-  return unwrap(await api.get<ApiResponse<unknown>>(`/api/submissions/${submissionId}`));
+async function getSubmissionById(submissionId: number): Promise<DocumentSubmission> {
+  return unwrap(await api.get<ApiResponse<DocumentSubmission>>(`/api/submissions/${submissionId}`));
 }
 
 async function listSubmissionsByAssignment(assignmentId: number, params?: QueryParams): Promise<unknown[]> {
@@ -70,9 +80,9 @@ async function uploadMultipleSubmissionFiles(submissionId: number, files: File[]
   );
 }
 
-async function listSubmissionFiles(submissionId: number, includeInactive = false): Promise<unknown[]> {
+async function listSubmissionFiles(submissionId: number, includeInactive = false): Promise<SubmissionFileResponse[]> {
   return unwrap(
-    await api.get<ApiResponse<unknown[]>>(`/api/submissions/${submissionId}/files`, {
+    await api.get<ApiResponse<SubmissionFileResponse[]>>(`/api/submissions/${submissionId}/files`, {
       params: { includeInactive },
     }),
   );

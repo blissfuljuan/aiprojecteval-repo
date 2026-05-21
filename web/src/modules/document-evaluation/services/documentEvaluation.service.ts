@@ -14,6 +14,7 @@ import type {
   DocumentRequirementSetAssignment,
   DocumentRequirementSetAssignmentSummary,
   DocumentRequirementSetSummary,
+  MyAssignedDocumentRequirement,
   PresetDocumentRequirementRequest,
   QueryParams,
   ReorderDocumentRequirementsRequest,
@@ -156,6 +157,10 @@ async function reorderDocumentRequirements(
 
 async function getAssignmentById(assignmentId: number): Promise<DocumentRequirementSetAssignment> {
   return unwrap(await api.get<ApiResponse<DocumentRequirementSetAssignment>>(`${ASSIGNMENTS_URL}/${assignmentId}`));
+}
+
+async function listMyAssignedDocumentRequirements(): Promise<MyAssignedDocumentRequirement[]> {
+  return unwrap(await api.get<ApiResponse<MyAssignedDocumentRequirement[]>>(`${BASE_URL}/my-assigned-requirements`));
 }
 
 async function listAssignmentsByClass(
@@ -394,6 +399,7 @@ export const documentEvaluationService = {
   removeDocumentRequirement,
   reorderDocumentRequirements,
   getAssignmentById,
+  listMyAssignedDocumentRequirements,
   listAssignmentsByClass,
   listAssignmentsByProject,
   assignRequirementSetToClass,

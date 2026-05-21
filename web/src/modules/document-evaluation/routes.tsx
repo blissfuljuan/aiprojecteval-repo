@@ -17,6 +17,8 @@ import { DocumentRequirementSetAssignmentsPage } from "@/modules/document-evalua
 import { DocumentRequirementSetDetailsPage } from "@/modules/document-evaluation/pages/DocumentRequirementSetDetailsPage";
 import { DocumentRequirementSetFormPage } from "@/modules/document-evaluation/pages/DocumentRequirementSetFormPage";
 import { DocumentRequirementSetsPage } from "@/modules/document-evaluation/pages/DocumentRequirementSetsPage";
+import { DocumentSubmissionCreatePage } from "@/modules/document-evaluation/pages/DocumentSubmissionCreatePage";
+import { DocumentSubmissionDetailsPage } from "@/modules/document-evaluation/pages/DocumentSubmissionDetailsPage";
 import { DocumentSubmissionsPage } from "@/modules/document-evaluation/pages/DocumentSubmissionsPage";
 import { ManualDocumentEvaluationDetailsPage } from "@/modules/document-evaluation/pages/ManualDocumentEvaluationDetailsPage";
 import { ManualDocumentEvaluationsPage } from "@/modules/document-evaluation/pages/ManualDocumentEvaluationsPage";
@@ -39,6 +41,14 @@ export const documentEvaluationRoutes: RouteObject[] = [
       {
         path: documentEvaluationPaths.submissions,
         element: <DocumentSubmissionsPage />,
+      },
+      {
+        path: documentEvaluationPaths.submissionCreate,
+        element: <DocumentSubmissionCreatePage />,
+      },
+      {
+        path: "/document-evaluation/submissions/:submissionId",
+        element: <DocumentSubmissionDetailsPage />,
       },
     ],
   },

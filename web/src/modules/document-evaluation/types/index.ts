@@ -202,3 +202,26 @@ export type DocumentRequirementSetAssignment = Partial<DocumentRequirementSetAss
     name?: string;
   } | null;
 };
+
+export type MyAssignedDocumentRequirement = {
+  assignmentId: number;
+  requirementSetId: number;
+  requirementSetName: string;
+  requirementSetDescription: string | null;
+  assignmentType: RequirementSetAssignmentType;
+  courseClassId: number | null;
+  courseClassName: string | null;
+  projectId: number | null;
+  projectTitle: string | null;
+  documentRequirementId: number;
+  requirementName: string;
+  requirementDescription: string | null;
+  required: boolean;
+  allowedFileTypes: AllowedFileType[] | null;
+  sortOrder: number | null;
+  existingDraftSubmissionId: number | null;
+  latestSubmissionId: number | null;
+  latestSubmissionStatus: import("@/modules/submission/types").DocumentSubmissionStatus | null;
+  latestSubmittedAt: string | null;
+  latestAttemptNumber: number | null;
+};

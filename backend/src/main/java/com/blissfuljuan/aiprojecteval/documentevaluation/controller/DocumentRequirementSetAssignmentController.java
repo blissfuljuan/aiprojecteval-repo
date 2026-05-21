@@ -7,6 +7,7 @@ import com.blissfuljuan.aiprojecteval.documentevaluation.dto.request.DeactivateR
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentRequirementSetAssignmentResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentRequirementSetAssignmentSummaryResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.DocumentRequirementSetResponse;
+import com.blissfuljuan.aiprojecteval.documentevaluation.dto.response.MyAssignedDocumentRequirementResponse;
 import com.blissfuljuan.aiprojecteval.documentevaluation.enums.RequirementSetAssignmentStatus;
 import com.blissfuljuan.aiprojecteval.documentevaluation.service.DocumentRequirementSetAssignmentService;
 import jakarta.validation.Valid;
@@ -57,6 +58,13 @@ public class DocumentRequirementSetAssignmentController {
 			Authentication authentication,
 			@PathVariable Long assignmentId) {
 		return ApiResponse.ok(assignmentService.getAssignmentById(authentication.getName(), assignmentId));
+	}
+
+	@GetMapping("/my-assigned-requirements")
+	@PreAuthorize("isAuthenticated()")
+	public ApiResponse<List<MyAssignedDocumentRequirementResponse>> getMyAssignedRequirements(
+			Authentication authentication) {
+		return ApiResponse.ok(assignmentService.getMyAssignedDocumentRequirements(authentication.getName()));
 	}
 
 	@GetMapping("/classes/{courseClassId}/requirement-set-assignments")

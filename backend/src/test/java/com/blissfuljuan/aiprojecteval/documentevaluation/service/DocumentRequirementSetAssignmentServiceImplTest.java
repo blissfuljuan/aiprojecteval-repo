@@ -26,6 +26,10 @@ import com.blissfuljuan.aiprojecteval.identity.model.User;
 import com.blissfuljuan.aiprojecteval.identity.repository.UserRepository;
 import com.blissfuljuan.aiprojecteval.project.model.Project;
 import com.blissfuljuan.aiprojecteval.project.repository.ProjectRepository;
+import com.blissfuljuan.aiprojecteval.submission.enums.SubmissionStatus;
+import com.blissfuljuan.aiprojecteval.submission.enums.SubmissionType;
+import com.blissfuljuan.aiprojecteval.submission.model.Submission;
+import com.blissfuljuan.aiprojecteval.submission.repository.SubmissionRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -54,6 +58,9 @@ class DocumentRequirementSetAssignmentServiceImplTest {
 	@Mock
 	private UserRepository userRepository;
 
+	@Mock
+	private SubmissionRepository submissionRepository;
+
 	private DocumentRequirementSetAssignmentServiceImpl service;
 
 	@BeforeEach
@@ -63,7 +70,8 @@ class DocumentRequirementSetAssignmentServiceImplTest {
 				requirementSetRepository,
 				courseClassRepository,
 				projectRepository,
-				userRepository);
+				userRepository,
+				submissionRepository);
 	}
 
 	@Test
@@ -234,6 +242,41 @@ class DocumentRequirementSetAssignmentServiceImplTest {
 		assertThat(responses).hasSize(1);
 		assertThat(responses.get(0).id()).isEqualTo(300L);
 		assertThat(responses.get(0).projectId()).isEqualTo(200L);
+	}
+
+	@Test
+	void shouldReturnStudentAssignedProjectRequirementsWithExistingDraft() {
+		User student = user(99L, "student@example.com", Role.STUDENT);
+		User instructor = user(10L, "instructor@example.com", Role.INSTRUCTOR);
+		DocumentRequirementSet requirementSet = requirementSet(100L, instructor, ConfigurationStatus.ACTIVE);
+		com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirement requirement =
+				new com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirement("Requirements Document", 1);
+		requirement.setId(101L);
+		requirement.setRequirementSet(requirementSet);
+		requirementSet.getDocumentRequirements().add(requirement);
+		Project project = project(200L);
+		DocumentRequirementSetAssignment assignment = projectAssignment(
+				300L,
+				requirementSet,
+				project,
+				instructor,
+				RequirementSetAssignmentStatus.ACTIVE);
+		Submission draft = submission(400L, student, assignment, requirement, SubmissionStatus.DRAFT);
+		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
+		when(projectRepository.findByOwnerUserIdOrderByCreatedAtDesc(99L)).thenReturn(List.of(project));
+		when(assignmentRepository.findByProjectIdAndStatus(200L, RequirementSetAssignmentStatus.ACTIVE))
+				.thenReturn(List.of(assignment));
+		when(submissionRepository.findByTypeAndSubmittedByIdOrderByCreatedAtDesc(SubmissionType.DOCUMENT, 99L))
+				.thenReturn(List.of(draft));
+
+		var responses = service.getMyAssignedDocumentRequirements("student@example.com");
+
+		assertThat(responses).hasSize(1);
+		assertThat(responses.get(0).assignmentId()).isEqualTo(300L);
+		assertThat(responses.get(0).documentRequirementId()).isEqualTo(101L);
+		assertThat(responses.get(0).requirementName()).isEqualTo("Requirements Document");
+		assertThat(responses.get(0).existingDraftSubmissionId()).isEqualTo(400L);
+		assertThat(responses.get(0).latestSubmissionStatus()).isEqualTo(SubmissionStatus.DRAFT);
 	}
 
 	@Test
@@ -421,5 +464,25 @@ class DocumentRequirementSetAssignmentServiceImplTest {
 		assignment.setProject(project);
 		assignment.setAssignedBy(assignedBy);
 		return assignment;
+	}
+
+	private Submission submission(
+			Long id,
+			User submittedBy,
+			DocumentRequirementSetAssignment assignment,
+			com.blissfuljuan.aiprojecteval.documentevaluation.model.DocumentRequirement requirement,
+			SubmissionStatus status) {
+		Submission submission = new Submission();
+		submission.setId(id);
+		submission.setType(SubmissionType.DOCUMENT);
+		submission.setSubmittedBy(submittedBy);
+		submission.setAssignmentId(assignment.getId());
+		submission.setRequirementId(requirement.getId());
+		submission.setProjectId(assignment.getProject() == null ? null : assignment.getProject().getId());
+		submission.setCourseClassId(assignment.getCourseClass() == null ? null : assignment.getCourseClass().getId());
+		submission.setStatus(status);
+		submission.setSubmissionTitle(requirement.getName());
+		submission.setAttemptNumber(1);
+		return submission;
 	}
 }
