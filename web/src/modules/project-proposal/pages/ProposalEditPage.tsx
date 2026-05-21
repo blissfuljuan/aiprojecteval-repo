@@ -6,6 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/common/u
 import { Input } from "@/common/ui/shadcn/input";
 import { Label } from "@/common/ui/shadcn/label";
 import { Textarea } from "@/common/ui/shadcn/textarea";
+import { ProjectProposalDocumentSection } from "@/modules/project-proposal/components/ProjectProposalDocumentSection";
 import { useProposal } from "@/modules/project-proposal/hooks/useProposal";
 import { projectProposalService } from "@/modules/project-proposal/services/projectProposal.service";
 import type { ProposalUpdateRequest } from "@/modules/project-proposal/types";
@@ -169,6 +170,8 @@ export function ProposalEditPage() {
           </CardFooter>
         </Card>
       </form>
+
+      <ProjectProposalDocumentSection proposalId={proposal.id} proposalTitle={proposal.title} canManage />
     </div>
   );
 }

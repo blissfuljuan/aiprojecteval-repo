@@ -15,6 +15,7 @@ import com.blissfuljuan.aiprojecteval.document.model.DocumentExtractionStatus;
 import com.blissfuljuan.aiprojecteval.document.model.DocumentProvider;
 import com.blissfuljuan.aiprojecteval.document.model.DocumentSourceType;
 import com.blissfuljuan.aiprojecteval.document.model.DocumentStatus;
+import com.blissfuljuan.aiprojecteval.document.model.DocumentType;
 import com.blissfuljuan.aiprojecteval.document.model.DocumentValidationStatus;
 import com.blissfuljuan.aiprojecteval.document.model.DocumentVersion;
 import com.blissfuljuan.aiprojecteval.document.repository.DocumentRepository;
@@ -99,6 +100,21 @@ class DocumentServiceImpl implements DocumentService {
 		return documentRepository.findByContextTypeAndContextId(contextType, contextId)
 				.stream()
 				.map(document -> documentMapper.toSummaryResponse(document, findCurrentVersion(document)))
+				.toList();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<DocumentResponse> findByContextAndDocumentType(
+			DocumentContextType contextType,
+			Long contextId,
+			DocumentType documentType) {
+		return documentRepository.findByContextTypeAndContextIdAndDocumentTypeOrderByUpdatedAtDesc(
+						contextType,
+						contextId,
+						documentType)
+				.stream()
+				.map(document -> documentMapper.toResponse(document, findCurrentVersion(document)))
 				.toList();
 	}
 

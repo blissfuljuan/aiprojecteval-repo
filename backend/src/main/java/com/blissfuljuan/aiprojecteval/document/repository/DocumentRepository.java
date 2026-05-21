@@ -15,4 +15,9 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
 			DocumentType documentType);
 
 	List<Document> findByContextTypeAndContextId(DocumentContextType contextType, Long contextId);
+
+	List<Document> findByContextTypeAndContextIdAndDocumentTypeOrderByUpdatedAtDesc(
+			DocumentContextType contextType,
+			Long contextId,
+			DocumentType documentType);
 }

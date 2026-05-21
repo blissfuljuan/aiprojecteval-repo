@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { Eye, Plus } from "lucide-react";
+import { Badge } from "@/common/ui/shadcn/badge";
 import { Button } from "@/common/ui/shadcn/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/common/ui/shadcn/card";
 import { Separator } from "@/common/ui/shadcn/separator";
@@ -14,6 +15,7 @@ import {
 import { useAuth } from "@/modules/identity/context/AuthContext";
 import { ProposalStatusBadge } from "@/modules/project-proposal/components/ProposalStatusBadge";
 import { useProposals } from "@/modules/project-proposal/hooks/useProposals";
+import type { ProjectProposal } from "@/modules/project-proposal/types";
 import { paths } from "@/routes/paths";
 
 export function ProposalListPage() {
@@ -68,6 +70,7 @@ export function ProposalListPage() {
                   <TableHead>Course Class</TableHead>
                   {!isStudent && <TableHead>Submitted By</TableHead>}
                   <TableHead>Status</TableHead>
+                  <TableHead>Document</TableHead>
                   <TableHead>Submitted On</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -80,6 +83,9 @@ export function ProposalListPage() {
                     {!isStudent && <TableCell>{proposal.submittedByName}</TableCell>}
                     <TableCell>
                       <ProposalStatusBadge status={proposal.status} />
+                    </TableCell>
+                    <TableCell>
+                      <DocumentReadinessBadge proposal={proposal} />
                     </TableCell>
                     <TableCell>{new Date(proposal.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell>
@@ -101,4 +107,21 @@ export function ProposalListPage() {
       </Card>
     </div>
   );
+}
+
+function DocumentReadinessBadge({ proposal }: { proposal: ProjectProposal }) {
+  const document = proposal.latestDocument;
+  if (!document) {
+    return <Badge variant="secondary">Missing</Badge>;
+  }
+  if (document.validationStatus === "VALID" && document.extractionStatus === "EXTRACTED") {
+    return <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">Ready</Badge>;
+  }
+  if (document.validationStatus === "VALID") {
+    return <Badge variant="outline">Validated</Badge>;
+  }
+  if (document.validationStatus && document.validationStatus !== "PENDING") {
+    return <Badge variant="destructive">Needs Attention</Badge>;
+  }
+  return <Badge variant="secondary">Pending</Badge>;
 }

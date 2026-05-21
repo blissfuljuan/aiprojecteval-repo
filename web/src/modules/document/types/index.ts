@@ -1,1 +1,1 @@
-export type { AnalysisResult, DocumentStatus, DocumentType, UploadedDocument } from "./document.types";
+export type * from "./document.types";
