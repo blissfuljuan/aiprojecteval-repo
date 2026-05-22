@@ -1,11 +1,13 @@
 import { NavLink } from "react-router";
 import {
   BarChart3,
+  BookOpenCheck,
   ClipboardCheck,
   ClipboardList,
   FileText,
   FolderKanban,
   Gauge,
+  GraduationCap,
   GitBranch,
   Rocket,
   Settings,
@@ -13,7 +15,12 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { hasAnyRole } from "@/common/lib/auth";
-import { studentModuleRoles, unrestrictedRoles } from "@/common/lib/roleAccess";
+import {
+  courseClassManagementRoles,
+  studentModuleRoles,
+  studentOnlyRoles,
+  unrestrictedRoles,
+} from "@/common/lib/roleAccess";
 import { cn } from "@/common/lib/utils";
 import { useAuth } from "@/modules/identity/context/AuthContext";
 import type { Role } from "@/modules/identity/types";
@@ -21,6 +28,8 @@ import { paths } from "@/routes/paths";
 
 const navItems = [
   { label: "Dashboard", to: paths.dashboard, icon: Gauge, end: true, roles: unrestrictedRoles },
+  { label: "Course Classes", to: paths.courseClasses, icon: BookOpenCheck, roles: courseClassManagementRoles },
+  { label: "My Classes", to: paths.myCourseClasses, icon: GraduationCap, roles: studentOnlyRoles },
   { label: "Projects", to: paths.projects, icon: FolderKanban, roles: studentModuleRoles },
   { label: "Proposals", to: paths.proposals, icon: ClipboardList, roles: studentModuleRoles },
   { label: "Submissions", to: paths.submissions, icon: UploadCloud, roles: studentModuleRoles },

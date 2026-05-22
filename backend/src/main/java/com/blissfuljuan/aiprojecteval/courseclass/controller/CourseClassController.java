@@ -1,12 +1,14 @@
 package com.blissfuljuan.aiprojecteval.courseclass.controller;
 
 import com.blissfuljuan.aiprojecteval.common.response.ApiResponse;
+import com.blissfuljuan.aiprojecteval.courseclass.dto.CourseClassEnrollmentRequest;
 import com.blissfuljuan.aiprojecteval.courseclass.dto.CourseClassRequest;
 import com.blissfuljuan.aiprojecteval.courseclass.dto.CourseClassResponse;
 import com.blissfuljuan.aiprojecteval.courseclass.service.CourseClassService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,6 +37,27 @@ public class CourseClassController {
 	@GetMapping
 	public ApiResponse<List<CourseClassResponse>> findAll() {
 		return ApiResponse.ok(courseClassService.findAll());
+	}
+
+	@PostMapping("/enroll")
+	@PreAuthorize("hasRole('STUDENT')")
+	public ApiResponse<CourseClassResponse> enroll(
+			Authentication authentication,
+			@Valid @RequestBody CourseClassEnrollmentRequest request) {
+		return ApiResponse.ok("Enrollment completed", courseClassService.enroll(authentication.getName(), request));
+	}
+
+	@GetMapping("/my")
+	@PreAuthorize("hasRole('STUDENT')")
+	public ApiResponse<List<CourseClassResponse>> findMyCourseClasses(Authentication authentication) {
+		return ApiResponse.ok(courseClassService.findMyCourseClasses(authentication.getName()));
+	}
+
+	@DeleteMapping("/my/{courseClassId}")
+	@PreAuthorize("hasRole('STUDENT')")
+	public ApiResponse<Void> unenroll(Authentication authentication, @PathVariable Long courseClassId) {
+		courseClassService.unenroll(authentication.getName(), courseClassId);
+		return ApiResponse.ok("Course class enrollment removed", null);
 	}
 
 	@GetMapping("/{id}")

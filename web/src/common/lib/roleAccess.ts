@@ -5,6 +5,10 @@ export const unrestrictedRoles: Role[] = ["ADMIN", "INSTRUCTOR", "EVALUATOR", "A
 
 export const studentModuleRoles: Role[] = [...unrestrictedRoles, "STUDENT"];
 
+export const courseClassManagementRoles: Role[] = ["ADMIN", "INSTRUCTOR"];
+
+export const studentOnlyRoles: Role[] = ["STUDENT"];
+
 export function getDefaultAuthenticatedPath(user: User | null | undefined) {
   return user?.role === "STUDENT" ? paths.projects : paths.dashboard;
 }

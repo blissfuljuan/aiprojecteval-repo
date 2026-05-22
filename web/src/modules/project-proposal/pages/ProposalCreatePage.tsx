@@ -7,6 +7,7 @@ import { Input } from "@/common/ui/shadcn/input";
 import { Label } from "@/common/ui/shadcn/label";
 import { Select } from "@/common/ui/shadcn/select";
 import { Textarea } from "@/common/ui/shadcn/textarea";
+import { useAuth } from "@/modules/identity/context/AuthContext";
 import { courseClassService } from "@/modules/project-proposal/services/courseClass.service";
 import { projectProposalService } from "@/modules/project-proposal/services/projectProposal.service";
 import type { CourseClass, ProposalCreateRequest } from "@/modules/project-proposal/types";
@@ -25,14 +26,19 @@ const emptyForm: ProposalCreateRequest = {
 
 export function ProposalCreatePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [form, setForm] = useState<ProposalCreateRequest>(emptyForm);
   const [courseClasses, setCourseClasses] = useState<CourseClass[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    courseClassService.findAll().then(setCourseClasses).catch(() => {});
-  }, []);
+    const fetchCourseClasses = user?.role === "STUDENT"
+      ? courseClassService.findMyCourseClasses
+      : courseClassService.findAll;
+
+    fetchCourseClasses().then(setCourseClasses).catch(() => {});
+  }, [user?.role]);
 
   function set(field: keyof ProposalCreateRequest, value: string | number) {
     setForm((prev) => ({ ...prev, [field]: value }));

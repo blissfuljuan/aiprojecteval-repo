@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.blissfuljuan.aiprojecteval.common.exception.GlobalExceptionHandler;
+import com.blissfuljuan.aiprojecteval.courseclass.dto.CourseClassEnrollmentRequest;
 import com.blissfuljuan.aiprojecteval.courseclass.dto.CourseClassRequest;
 import com.blissfuljuan.aiprojecteval.courseclass.dto.CourseClassResponse;
 import com.blissfuljuan.aiprojecteval.courseclass.service.CourseClassService;
@@ -59,6 +60,49 @@ class CourseClassControllerTest {
 		mockMvc.perform(get("/api/course-classes").with(user("student@example.com").roles("STUDENT")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true));
+	}
+
+	@Test
+	void shouldAllowStudentToEnrollByClassCode() throws Exception {
+		when(courseClassService.enroll(any(String.class), any(CourseClassEnrollmentRequest.class))).thenReturn(sampleResponse());
+
+		mockMvc.perform(post("/api/course-classes/enroll")
+						.with(user("student@example.com").roles("STUDENT"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"code\":\"SE201\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.code").value("SE201"));
+	}
+
+	@Test
+	void shouldRejectInstructorFromEnrollmentEndpoint() throws Exception {
+		mockMvc.perform(post("/api/course-classes/enroll")
+						.with(user("instructor@example.com").roles("INSTRUCTOR"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"code\":\"SE201\"}"))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void shouldAllowStudentToViewMyCourseClasses() throws Exception {
+		when(courseClassService.findMyCourseClasses("student@example.com")).thenReturn(List.of(sampleResponse()));
+
+		mockMvc.perform(get("/api/course-classes/my").with(user("student@example.com").roles("STUDENT")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data[0].name").value("Software Engineering"));
+	}
+
+	@Test
+	void shouldRejectAdminFromStudentCourseClasses() throws Exception {
+		mockMvc.perform(get("/api/course-classes/my").with(user("admin@example.com").roles("ADMIN")))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void shouldAllowStudentToUnenroll() throws Exception {
+		mockMvc.perform(delete("/api/course-classes/my/1")
+						.with(user("student@example.com").roles("STUDENT")))
+				.andExpect(status().isOk());
 	}
 
 	@Test
