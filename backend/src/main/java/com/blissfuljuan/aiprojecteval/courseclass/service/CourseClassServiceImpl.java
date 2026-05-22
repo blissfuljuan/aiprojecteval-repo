@@ -83,6 +83,10 @@ class CourseClassServiceImpl implements CourseClassService {
 	@Transactional
 	public CourseClassResponse enroll(String currentUserEmail, CourseClassEnrollmentRequest request) {
 		User student = findStudentByEmail(currentUserEmail);
+		if (request.code() == null || request.code().isBlank()) {
+			throw new BadRequestException("Class code is required");
+		}
+
 		String code = request.code().trim();
 		CourseClass courseClass = courseClassRepository.findByCodeIgnoreCase(code)
 				.orElseThrow(() -> new BadRequestException("Invalid class code"));

@@ -17,6 +17,10 @@ import {
 import { studentCourseClassService } from "@/modules/student-course-class/services/studentCourseClass.service";
 import type { CourseClass } from "@/modules/course-class/types";
 
+function uniqueCourseClasses(classes: CourseClass[]) {
+  return Array.from(new Map(classes.map((courseClass) => [courseClass.id, courseClass])).values());
+}
+
 export function MyCourseClassesPage() {
   const [code, setCode] = useState("");
   const [courseClasses, setCourseClasses] = useState<CourseClass[]>([]);
@@ -32,7 +36,7 @@ export function MyCourseClassesPage() {
     try {
       setIsLoading(true);
       setError(null);
-      setCourseClasses(await studentCourseClassService.findMyCourseClasses());
+      setCourseClasses(uniqueCourseClasses(await studentCourseClassService.findMyCourseClasses()));
     } catch (err) {
       setError(studentCourseClassService.getErrorMessage(err));
     } finally {
@@ -46,12 +50,19 @@ export function MyCourseClassesPage() {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    const trimmedCode = code.trim();
+
+    if (!trimmedCode) {
+      setEnrollError("Class code is required");
+      return;
+    }
 
     try {
       setIsSubmitting(true);
       setError(null);
       setEnrollError(null);
-      const enrolled = await studentCourseClassService.enrollByCode(code.trim());
+      setSuccess(null);
+      const enrolled = await studentCourseClassService.enrollByCode(trimmedCode);
       setSuccess(`Enrolled in ${enrolled.name}.`);
       setCode("");
       setIsEnrollOpen(false);
@@ -66,6 +77,7 @@ export function MyCourseClassesPage() {
   function openEnrollModal() {
     setCode("");
     setEnrollError(null);
+    setSuccess(null);
     setIsEnrollOpen(true);
   }
 

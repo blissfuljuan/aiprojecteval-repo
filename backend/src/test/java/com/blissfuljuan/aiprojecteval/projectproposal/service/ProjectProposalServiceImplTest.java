@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.blissfuljuan.aiprojecteval.common.exception.BadRequestException;
 import com.blissfuljuan.aiprojecteval.courseclass.model.CourseClass;
+import com.blissfuljuan.aiprojecteval.courseclass.repository.CourseClassEnrollmentRepository;
 import com.blissfuljuan.aiprojecteval.courseclass.repository.CourseClassRepository;
 import com.blissfuljuan.aiprojecteval.document.service.DocumentService;
 import com.blissfuljuan.aiprojecteval.identity.model.Role;
@@ -44,6 +45,9 @@ class ProjectProposalServiceImplTest {
 	private CourseClassRepository courseClassRepository;
 
 	@Mock
+	private CourseClassEnrollmentRepository courseClassEnrollmentRepository;
+
+	@Mock
 	private UserRepository userRepository;
 
 	@Mock
@@ -59,6 +63,7 @@ class ProjectProposalServiceImplTest {
 		projectProposalService = new ProjectProposalServiceImpl(
 				projectProposalRepository,
 				courseClassRepository,
+				courseClassEnrollmentRepository,
 				userRepository,
 				projectRepository,
 				documentService);
@@ -71,6 +76,7 @@ class ProjectProposalServiceImplTest {
 		CourseClass courseClass = courseClass();
 		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
 		when(courseClassRepository.findById(1L)).thenReturn(Optional.of(courseClass));
+		when(courseClassEnrollmentRepository.existsByStudentIdAndCourseClassId(1L, 1L)).thenReturn(true);
 		when(projectProposalRepository.existsBySubmittedByIdAndStatusIn(any(), any())).thenReturn(false);
 		when(projectProposalRepository.save(any(ProjectProposal.class))).thenAnswer(invocation -> {
 			ProjectProposal proposal = invocation.getArgument(0);
@@ -91,11 +97,23 @@ class ProjectProposalServiceImplTest {
 	void shouldRejectDuplicateActiveProposalForSubmitter() {
 		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(user(Role.STUDENT)));
 		when(courseClassRepository.findById(1L)).thenReturn(Optional.of(courseClass()));
+		when(courseClassEnrollmentRepository.existsByStudentIdAndCourseClassId(1L, 1L)).thenReturn(true);
 		when(projectProposalRepository.existsBySubmittedByIdAndStatusIn(any(), any())).thenReturn(true);
 
 		assertThatThrownBy(() -> projectProposalService.createProposal("student@example.com", createRequest()))
 				.isInstanceOf(BadRequestException.class)
 				.hasMessage("User already has an active project proposal");
+	}
+
+	@Test
+	void shouldRejectStudentProposalForUnenrolledCourseClass() {
+		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(user(Role.STUDENT)));
+		when(courseClassRepository.findById(1L)).thenReturn(Optional.of(courseClass()));
+		when(courseClassEnrollmentRepository.existsByStudentIdAndCourseClassId(1L, 1L)).thenReturn(false);
+
+		assertThatThrownBy(() -> projectProposalService.createProposal("student@example.com", createRequest()))
+				.isInstanceOf(BadRequestException.class)
+				.hasMessage("Students can submit proposals only for enrolled course classes");
 	}
 
 	@Test

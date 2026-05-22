@@ -84,6 +84,16 @@ class CourseClassControllerTest {
 	}
 
 	@Test
+	void shouldRejectBlankClassCodeEnrollment() throws Exception {
+		mockMvc.perform(post("/api/course-classes/enroll")
+						.with(user("student@example.com").roles("STUDENT"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"code\":\"   \"}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.errors[0]").value("code: Class code is required"));
+	}
+
+	@Test
 	void shouldAllowStudentToViewMyCourseClasses() throws Exception {
 		when(courseClassService.findMyCourseClasses("student@example.com")).thenReturn(List.of(sampleResponse()));
 
@@ -158,6 +168,15 @@ class CourseClassControllerTest {
 	}
 
 	@Test
+	void shouldRejectStudentFromUpdatingCourseClass() throws Exception {
+		mockMvc.perform(put("/api/course-classes/1")
+						.with(user("student@example.com").roles("STUDENT"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"name\":\"Updated Name\",\"code\":\"SE201\"}"))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
 	void shouldAllowAdminToDeleteCourseClass() throws Exception {
 		mockMvc.perform(delete("/api/course-classes/1")
 						.with(user("admin@example.com").roles("ADMIN")))
@@ -167,7 +186,14 @@ class CourseClassControllerTest {
 	@Test
 	void shouldRejectInstructorFromDeletingCourseClass() throws Exception {
 		mockMvc.perform(delete("/api/course-classes/1")
-						.with(user("instructor@example.com").roles("INSTRUCTOR")))
+				.with(user("instructor@example.com").roles("INSTRUCTOR")))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void shouldRejectStudentFromDeletingCourseClass() throws Exception {
+		mockMvc.perform(delete("/api/course-classes/1")
+						.with(user("student@example.com").roles("STUDENT")))
 				.andExpect(status().isForbidden());
 	}
 

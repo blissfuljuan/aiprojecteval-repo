@@ -174,6 +174,16 @@ class CourseClassServiceImplTest {
 	}
 
 	@Test
+	void shouldRejectBlankClassCode() {
+		User student = userWithId(7L, Role.STUDENT);
+		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
+
+		assertThatThrownBy(() -> service.enroll("student@example.com", new CourseClassEnrollmentRequest("   ")))
+				.isInstanceOf(BadRequestException.class)
+				.hasMessage("Class code is required");
+	}
+
+	@Test
 	void shouldRejectDuplicateEnrollment() {
 		User student = userWithId(7L, Role.STUDENT);
 		CourseClass courseClass = courseClassWithId(1L, "Capstone", "CAP101");
