@@ -7,6 +7,7 @@ import { Input } from "@/common/ui/shadcn/input";
 import { Label } from "@/common/ui/shadcn/label";
 import { Select } from "@/common/ui/shadcn/select";
 import { Textarea } from "@/common/ui/shadcn/textarea";
+import { useAuth } from "@/modules/identity/context/AuthContext";
 import { courseClassService } from "@/modules/project-proposal/services/courseClass.service";
 import { projectProposalService } from "@/modules/project-proposal/services/projectProposal.service";
 import type { CourseClass, ProposalCreateRequest } from "@/modules/project-proposal/types";
@@ -25,14 +26,50 @@ const emptyForm: ProposalCreateRequest = {
 
 export function ProposalCreatePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [form, setForm] = useState<ProposalCreateRequest>(emptyForm);
   const [courseClasses, setCourseClasses] = useState<CourseClass[]>([]);
+  const [isLoadingCourseClasses, setIsLoadingCourseClasses] = useState(true);
+  const [courseClassError, setCourseClassError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    courseClassService.findAll().then(setCourseClasses).catch(() => {});
-  }, []);
+    const fetchCourseClasses = user?.role === "STUDENT"
+      ? courseClassService.findMyCourseClasses
+      : courseClassService.findAll;
+
+    let isMounted = true;
+
+    setIsLoadingCourseClasses(true);
+    setCourseClassError(null);
+
+    fetchCourseClasses()
+      .then((classes) => {
+        if (!isMounted) return;
+        setCourseClasses(classes);
+        setForm((prev) => ({
+          ...prev,
+          courseClassId: classes.some((courseClass) => courseClass.id === prev.courseClassId)
+            ? prev.courseClassId
+            : 0,
+        }));
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        setCourseClasses([]);
+        setCourseClassError(projectProposalService.getErrorMessage(err));
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingCourseClasses(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.role]);
 
   function set(field: keyof ProposalCreateRequest, value: string | number) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -40,6 +77,10 @@ export function ProposalCreatePage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (user?.role === "STUDENT" && courseClasses.length === 0) {
+      setError("Enroll in a course class before submitting a proposal.");
+      return;
+    }
     if (!form.courseClassId) {
       setError("Please select a course class.");
       return;
@@ -78,6 +119,12 @@ export function ProposalCreatePage() {
           </CardHeader>
           <CardContent className="grid gap-5">
             {error && <p className="text-sm text-destructive">{error}</p>}
+            {courseClassError && <p className="text-sm text-destructive">{courseClassError}</p>}
+            {user?.role === "STUDENT" && !isLoadingCourseClasses && courseClasses.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                You need to enroll in a course class before submitting a proposal.
+              </p>
+            )}
 
             <div className="grid gap-2">
               <Label htmlFor="course-class">Course Class <span aria-hidden="true">*</span></Label>
@@ -86,11 +133,14 @@ export function ProposalCreatePage() {
                 value={form.courseClassId || ""}
                 onChange={(e) => set("courseClassId", Number(e.target.value))}
                 required
+                disabled={isLoadingCourseClasses || courseClasses.length === 0}
               >
-                <option value="">Select a course class</option>
+                <option value="">
+                  {isLoadingCourseClasses ? "Loading course classes..." : "Select a course class"}
+                </option>
                 {courseClasses.map((cc) => (
                   <option key={cc.id} value={cc.id}>
-                    {cc.code ? `${cc.code} — ` : ""}{cc.name}
+                    {cc.code ? `${cc.code} - ` : ""}{cc.name}
                   </option>
                 ))}
               </Select>
@@ -180,7 +230,10 @@ export function ProposalCreatePage() {
             <Button asChild variant="outline">
               <Link to={paths.proposals}>Cancel</Link>
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              disabled={isSubmitting || isLoadingCourseClasses || (user?.role === "STUDENT" && courseClasses.length === 0)}
+            >
               {isSubmitting ? "Submitting..." : "Submit Proposal"}
             </Button>
           </CardFooter>

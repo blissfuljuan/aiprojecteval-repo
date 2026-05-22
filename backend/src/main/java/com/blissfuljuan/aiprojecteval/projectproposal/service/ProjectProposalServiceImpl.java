@@ -3,6 +3,7 @@ package com.blissfuljuan.aiprojecteval.projectproposal.service;
 import com.blissfuljuan.aiprojecteval.common.exception.BadRequestException;
 import com.blissfuljuan.aiprojecteval.common.exception.ResourceNotFoundException;
 import com.blissfuljuan.aiprojecteval.courseclass.model.CourseClass;
+import com.blissfuljuan.aiprojecteval.courseclass.repository.CourseClassEnrollmentRepository;
 import com.blissfuljuan.aiprojecteval.courseclass.repository.CourseClassRepository;
 import com.blissfuljuan.aiprojecteval.document.dto.DocumentLinkSubmitRequest;
 import com.blissfuljuan.aiprojecteval.document.dto.DocumentResponse;
@@ -54,6 +55,7 @@ class ProjectProposalServiceImpl implements ProjectProposalService {
 
 	private final ProjectProposalRepository projectProposalRepository;
 	private final CourseClassRepository courseClassRepository;
+	private final CourseClassEnrollmentRepository courseClassEnrollmentRepository;
 	private final UserRepository userRepository;
 	private final ProjectRepository projectRepository;
 	private final DocumentService documentService;
@@ -61,11 +63,13 @@ class ProjectProposalServiceImpl implements ProjectProposalService {
 	ProjectProposalServiceImpl(
 			ProjectProposalRepository projectProposalRepository,
 			CourseClassRepository courseClassRepository,
+			CourseClassEnrollmentRepository courseClassEnrollmentRepository,
 			UserRepository userRepository,
 			ProjectRepository projectRepository,
 			DocumentService documentService) {
 		this.projectProposalRepository = projectProposalRepository;
 		this.courseClassRepository = courseClassRepository;
+		this.courseClassEnrollmentRepository = courseClassEnrollmentRepository;
 		this.userRepository = userRepository;
 		this.projectRepository = projectRepository;
 		this.documentService = documentService;
@@ -77,6 +81,13 @@ class ProjectProposalServiceImpl implements ProjectProposalService {
 		User currentUser = findUserByEmail(currentUserEmail);
 		CourseClass courseClass = courseClassRepository.findById(request.courseClassId())
 				.orElseThrow(() -> new ResourceNotFoundException("Course class not found"));
+
+		if (currentUser.getRole() == Role.STUDENT
+				&& !courseClassEnrollmentRepository.existsByStudentIdAndCourseClassId(
+						currentUser.getId(),
+						courseClass.getId())) {
+			throw new BadRequestException("Students can submit proposals only for enrolled course classes");
+		}
 
 		if (projectProposalRepository.existsBySubmittedByIdAndStatusIn(currentUser.getId(), ACTIVE_STATUSES)) {
 			throw new BadRequestException("User already has an active project proposal");

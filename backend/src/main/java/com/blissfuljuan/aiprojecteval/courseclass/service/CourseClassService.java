@@ -1,5 +1,6 @@
 package com.blissfuljuan.aiprojecteval.courseclass.service;
 
+import com.blissfuljuan.aiprojecteval.courseclass.dto.CourseClassEnrollmentRequest;
 import com.blissfuljuan.aiprojecteval.courseclass.dto.CourseClassRequest;
 import com.blissfuljuan.aiprojecteval.courseclass.dto.CourseClassResponse;
 import java.util.List;
@@ -15,4 +16,10 @@ public interface CourseClassService {
 	CourseClassResponse update(Long id, CourseClassRequest request);
 
 	void delete(Long id);
+
+	CourseClassResponse enroll(String currentUserEmail, CourseClassEnrollmentRequest request);
+
+	List<CourseClassResponse> findMyCourseClasses(String currentUserEmail);
+
+	void unenroll(String currentUserEmail, Long courseClassId);
 }
