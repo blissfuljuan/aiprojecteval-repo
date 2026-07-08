@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.blissfuljuan.aiprojecteval.TestDataFactory;
+import com.blissfuljuan.aiprojecteval.common.exception.BadRequestException;
 import com.blissfuljuan.aiprojecteval.common.exception.ResourceNotFoundException;
 import com.blissfuljuan.aiprojecteval.identity.dto.UserResponse;
 import com.blissfuljuan.aiprojecteval.identity.model.Role;
@@ -119,5 +120,63 @@ class ProjectServiceImplTest {
 		assertThatThrownBy(() -> projectService.findById("admin@example.com", 99L))
 				.isInstanceOf(ResourceNotFoundException.class)
 				.hasMessage("Project not found");
+	}
+
+	@Test
+	void shouldAllowInstructorToReadAnyProject() {
+		UserResponse instructor = TestDataFactory.createUserResponse(Role.INSTRUCTOR);
+		Project project = TestDataFactory.createProject(1L);
+		when(authService.getCurrentUser("instructor@example.com")).thenReturn(instructor);
+		when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+
+		ProjectResponse response = projectService.findById("instructor@example.com", 1L);
+
+		assertThat(response.id()).isEqualTo(1L);
+	}
+
+	@Test
+	void shouldAllowInstructorToUpdateAnyProject() {
+		UserResponse instructor = TestDataFactory.createUserResponse(Role.INSTRUCTOR);
+		Project project = TestDataFactory.createProject(1L);
+		ProjectRequest request = new ProjectRequest("Reviewed", "Reviewed description", "https://github.com/example/reviewed");
+		when(authService.getCurrentUser("instructor@example.com")).thenReturn(instructor);
+		when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+		when(projectRepository.save(project)).thenReturn(project);
+
+		ProjectResponse response = projectService.update("instructor@example.com", 1L, request);
+
+		assertThat(response.title()).isEqualTo("Reviewed");
+		assertThat(project.getRepositoryUrl()).isEqualTo("https://github.com/example/reviewed");
+	}
+
+	@Test
+	void shouldRejectEvaluatorProjectUpdate() {
+		UserResponse evaluator = TestDataFactory.createUserResponse(Role.EVALUATOR);
+		when(authService.getCurrentUser("evaluator@example.com")).thenReturn(evaluator);
+
+		assertThatThrownBy(() -> projectService.update(
+				"evaluator@example.com",
+				1L,
+				TestDataFactory.createProjectRequest()))
+				.isInstanceOf(BadRequestException.class)
+				.hasMessage("User is not allowed to modify this project");
+	}
+
+	@Test
+	void shouldCreateProjectFromApprovedProposal() {
+		Project savedProject = TestDataFactory.createProject(1L);
+		when(projectRepository.save(any(Project.class))).thenReturn(savedProject);
+
+		projectService.createFromApprovedProposal(
+				7L,
+				"student@example.com",
+				"Approved Project",
+				"Approved description",
+				10L);
+
+		ArgumentCaptor<Project> projectCaptor = ArgumentCaptor.forClass(Project.class);
+		verify(projectRepository).save(projectCaptor.capture());
+		assertThat(projectCaptor.getValue().getOwnerUserId()).isEqualTo(7L);
+		assertThat(projectCaptor.getValue().getProjectProposalId()).isEqualTo(10L);
 	}
 }

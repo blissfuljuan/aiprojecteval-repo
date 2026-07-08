@@ -7,6 +7,7 @@ import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalCreateR
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalResponse;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalUpdateRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProposalDecisionRequest;
+import com.blissfuljuan.aiprojecteval.projectproposal.model.ProjectProposal;
 import java.util.List;
 
 public interface ProjectProposalService {
@@ -37,4 +38,6 @@ public interface ProjectProposalService {
 	void validateCanViewProposalDocuments(String currentUserEmail, Long id);
 
 	void validateCanManageProposalDocuments(String currentUserEmail, Long id);
+
+	ProjectProposal getProposalEntity(Long id);
 }

@@ -17,4 +17,13 @@ public interface ProjectService {
 	ProjectResponse update(String currentUserEmail, Long id, ProjectRequest request);
 
 	void delete(String currentUserEmail, Long id);
+
+	boolean existsByProjectProposalId(Long projectProposalId);
+
+	ProjectResponse createFromApprovedProposal(
+			Long ownerUserId,
+			String ownerEmail,
+			String title,
+			String description,
+			Long projectProposalId);
 }

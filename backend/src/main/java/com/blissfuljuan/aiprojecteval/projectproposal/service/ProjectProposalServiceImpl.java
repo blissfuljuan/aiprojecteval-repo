@@ -3,8 +3,7 @@ package com.blissfuljuan.aiprojecteval.projectproposal.service;
 import com.blissfuljuan.aiprojecteval.common.exception.BadRequestException;
 import com.blissfuljuan.aiprojecteval.common.exception.ResourceNotFoundException;
 import com.blissfuljuan.aiprojecteval.courseclass.model.CourseClass;
-import com.blissfuljuan.aiprojecteval.courseclass.repository.CourseClassEnrollmentRepository;
-import com.blissfuljuan.aiprojecteval.courseclass.repository.CourseClassRepository;
+import com.blissfuljuan.aiprojecteval.courseclass.service.CourseClassService;
 import com.blissfuljuan.aiprojecteval.document.dto.DocumentLinkSubmitRequest;
 import com.blissfuljuan.aiprojecteval.document.dto.DocumentResponse;
 import com.blissfuljuan.aiprojecteval.document.dto.DocumentSummaryResponse;
@@ -13,9 +12,8 @@ import com.blissfuljuan.aiprojecteval.document.model.DocumentType;
 import com.blissfuljuan.aiprojecteval.document.service.DocumentService;
 import com.blissfuljuan.aiprojecteval.identity.model.Role;
 import com.blissfuljuan.aiprojecteval.identity.model.User;
-import com.blissfuljuan.aiprojecteval.identity.repository.UserRepository;
-import com.blissfuljuan.aiprojecteval.project.model.Project;
-import com.blissfuljuan.aiprojecteval.project.repository.ProjectRepository;
+import com.blissfuljuan.aiprojecteval.identity.service.AuthService;
+import com.blissfuljuan.aiprojecteval.project.service.ProjectService;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.AdviserDecisionRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalDocumentLinkRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalCreateRequest;
@@ -54,24 +52,21 @@ class ProjectProposalServiceImpl implements ProjectProposalService {
 	);
 
 	private final ProjectProposalRepository projectProposalRepository;
-	private final CourseClassRepository courseClassRepository;
-	private final CourseClassEnrollmentRepository courseClassEnrollmentRepository;
-	private final UserRepository userRepository;
-	private final ProjectRepository projectRepository;
+	private final CourseClassService courseClassService;
+	private final AuthService authService;
+	private final ProjectService projectService;
 	private final DocumentService documentService;
 
 	ProjectProposalServiceImpl(
 			ProjectProposalRepository projectProposalRepository,
-			CourseClassRepository courseClassRepository,
-			CourseClassEnrollmentRepository courseClassEnrollmentRepository,
-			UserRepository userRepository,
-			ProjectRepository projectRepository,
+			CourseClassService courseClassService,
+			AuthService authService,
+			ProjectService projectService,
 			DocumentService documentService) {
 		this.projectProposalRepository = projectProposalRepository;
-		this.courseClassRepository = courseClassRepository;
-		this.courseClassEnrollmentRepository = courseClassEnrollmentRepository;
-		this.userRepository = userRepository;
-		this.projectRepository = projectRepository;
+		this.courseClassService = courseClassService;
+		this.authService = authService;
+		this.projectService = projectService;
 		this.documentService = documentService;
 	}
 
@@ -79,11 +74,10 @@ class ProjectProposalServiceImpl implements ProjectProposalService {
 	@Transactional
 	public ProjectProposalResponse createProposal(String currentUserEmail, ProjectProposalCreateRequest request) {
 		User currentUser = findUserByEmail(currentUserEmail);
-		CourseClass courseClass = courseClassRepository.findById(request.courseClassId())
-				.orElseThrow(() -> new ResourceNotFoundException("Course class not found"));
+		CourseClass courseClass = courseClassService.getCourseClassEntity(request.courseClassId());
 
 		if (currentUser.getRole() == Role.STUDENT
-				&& !courseClassEnrollmentRepository.existsByStudentIdAndCourseClassId(
+				&& !courseClassService.isStudentEnrolled(
 						currentUser.getId(),
 						courseClass.getId())) {
 			throw new BadRequestException("Students can submit proposals only for enrolled course classes");
@@ -290,23 +284,26 @@ class ProjectProposalServiceImpl implements ProjectProposalService {
 		validateCanModify(currentUser, findProposal(id));
 	}
 
+	@Override
+	@Transactional(readOnly = true)
+	public ProjectProposal getProposalEntity(Long id) {
+		return findProposal(id);
+	}
+
 	private void approveProposal(ProjectProposal proposal, LocalDateTime now) {
-		if (projectRepository.existsByProjectProposalId(proposal.getId())) {
+		if (projectService.existsByProjectProposalId(proposal.getId())) {
 			throw new BadRequestException("A project already exists for this proposal");
 		}
 
 		proposal.setStatus(ProposalStatus.APPROVED);
 		proposal.setApprovedAt(now);
 
-		Project project = new Project(
+		projectService.createFromApprovedProposal(
 				proposal.getSubmittedBy().getId(),
 				proposal.getSubmittedBy().getEmail(),
 				proposal.getTitle(),
 				resolveProjectDescription(proposal),
-				null
-		);
-		project.setProjectProposalId(proposal.getId());
-		projectRepository.save(project);
+				proposal.getId());
 	}
 
 	private String resolveProjectDescription(ProjectProposal proposal) {
@@ -366,7 +363,6 @@ class ProjectProposalServiceImpl implements ProjectProposalService {
 	}
 
 	private User findUserByEmail(String email) {
-		return userRepository.findByEmail(email)
-				.orElseThrow(() -> new ResourceNotFoundException("User not found"));
+		return authService.getUserByEmail(email);
 	}
 }

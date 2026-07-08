@@ -4,6 +4,7 @@ import com.blissfuljuan.aiprojecteval.identity.dto.AuthResponse;
 import com.blissfuljuan.aiprojecteval.identity.dto.LoginRequest;
 import com.blissfuljuan.aiprojecteval.identity.dto.RegisterRequest;
 import com.blissfuljuan.aiprojecteval.identity.dto.UserResponse;
+import com.blissfuljuan.aiprojecteval.identity.model.User;
 
 public interface AuthService {
 
@@ -14,4 +15,6 @@ public interface AuthService {
 	void logout();
 
 	UserResponse getCurrentUser(String email);
+
+	User getUserByEmail(String email);
 }

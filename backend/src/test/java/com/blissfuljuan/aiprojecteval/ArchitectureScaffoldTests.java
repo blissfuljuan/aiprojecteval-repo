@@ -17,7 +17,9 @@ class ArchitectureScaffoldTests {
 
 	private static final Set<String> MAJOR_MODULES = Set.of(
 			"identity",
+			"courseclass",
 			"project",
+			"projectproposal",
 			"submission",
 			"document",
 			"evaluation",
