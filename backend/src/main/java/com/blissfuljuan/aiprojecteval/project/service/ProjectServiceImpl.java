@@ -1,6 +1,7 @@
 package com.blissfuljuan.aiprojecteval.project.service;
 
 import com.blissfuljuan.aiprojecteval.common.exception.ResourceNotFoundException;
+import com.blissfuljuan.aiprojecteval.common.exception.BadRequestException;
 import com.blissfuljuan.aiprojecteval.identity.dto.UserResponse;
 import com.blissfuljuan.aiprojecteval.identity.model.Role;
 import com.blissfuljuan.aiprojecteval.identity.service.AuthService;
@@ -73,14 +74,14 @@ class ProjectServiceImpl implements ProjectService {
 	public ProjectResponse findById(String currentUserEmail, Long id) {
 		UserResponse owner = authService.getCurrentUser(currentUserEmail);
 
-		return projectMapper.toResponse(findOwnedProject(id, owner.id()));
+		return projectMapper.toResponse(findReadableProject(id, owner));
 	}
 
 	@Override
 	@Transactional
 	public ProjectResponse update(String currentUserEmail, Long id, ProjectRequest request) {
 		UserResponse owner = authService.getCurrentUser(currentUserEmail);
-		Project project = findOwnedProject(id, owner.id());
+		Project project = findWritableProject(id, owner);
 		project.setTitle(request.title());
 		project.setDescription(request.description());
 		project.setRepositoryUrl(request.repositoryUrl());
@@ -92,8 +93,49 @@ class ProjectServiceImpl implements ProjectService {
 	@Transactional
 	public void delete(String currentUserEmail, Long id) {
 		UserResponse owner = authService.getCurrentUser(currentUserEmail);
-		Project project = findOwnedProject(id, owner.id());
+		Project project = findWritableProject(id, owner);
 		projectRepository.delete(project);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public boolean existsByProjectProposalId(Long projectProposalId) {
+		return projectRepository.existsByProjectProposalId(projectProposalId);
+	}
+
+	@Override
+	@Transactional
+	public ProjectResponse createFromApprovedProposal(
+			Long ownerUserId,
+			String ownerEmail,
+			String title,
+			String description,
+			Long projectProposalId) {
+		Project project = new Project(ownerUserId, ownerEmail, title, description, null);
+		project.setProjectProposalId(projectProposalId);
+
+		return projectMapper.toResponse(projectRepository.save(project));
+	}
+
+	private Project findReadableProject(Long id, UserResponse currentUser) {
+		if (currentUser.role() == Role.STUDENT) {
+			return findOwnedProject(id, currentUser.id());
+		}
+
+		return projectRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Project not found"));
+	}
+
+	private Project findWritableProject(Long id, UserResponse currentUser) {
+		if (currentUser.role() == Role.STUDENT) {
+			return findOwnedProject(id, currentUser.id());
+		}
+		if (currentUser.role() == Role.ADMIN || currentUser.role() == Role.INSTRUCTOR) {
+			return projectRepository.findById(id)
+					.orElseThrow(() -> new ResourceNotFoundException("Project not found"));
+		}
+
+		throw new BadRequestException("User is not allowed to modify this project");
 	}
 
 	private Project findOwnedProject(Long id, Long ownerUserId) {

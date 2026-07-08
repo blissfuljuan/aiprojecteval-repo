@@ -10,14 +10,12 @@ import static org.mockito.Mockito.when;
 
 import com.blissfuljuan.aiprojecteval.common.exception.BadRequestException;
 import com.blissfuljuan.aiprojecteval.courseclass.model.CourseClass;
-import com.blissfuljuan.aiprojecteval.courseclass.repository.CourseClassEnrollmentRepository;
-import com.blissfuljuan.aiprojecteval.courseclass.repository.CourseClassRepository;
+import com.blissfuljuan.aiprojecteval.courseclass.service.CourseClassService;
 import com.blissfuljuan.aiprojecteval.document.service.DocumentService;
 import com.blissfuljuan.aiprojecteval.identity.model.Role;
 import com.blissfuljuan.aiprojecteval.identity.model.User;
-import com.blissfuljuan.aiprojecteval.identity.repository.UserRepository;
-import com.blissfuljuan.aiprojecteval.project.model.Project;
-import com.blissfuljuan.aiprojecteval.project.repository.ProjectRepository;
+import com.blissfuljuan.aiprojecteval.identity.service.AuthService;
+import com.blissfuljuan.aiprojecteval.project.service.ProjectService;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.AdviserDecisionRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalCreateRequest;
 import com.blissfuljuan.aiprojecteval.projectproposal.dto.ProjectProposalResponse;
@@ -31,7 +29,6 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -42,16 +39,13 @@ class ProjectProposalServiceImplTest {
 	private ProjectProposalRepository projectProposalRepository;
 
 	@Mock
-	private CourseClassRepository courseClassRepository;
+	private CourseClassService courseClassService;
 
 	@Mock
-	private CourseClassEnrollmentRepository courseClassEnrollmentRepository;
+	private AuthService authService;
 
 	@Mock
-	private UserRepository userRepository;
-
-	@Mock
-	private ProjectRepository projectRepository;
+	private ProjectService projectService;
 
 	@Mock
 	private DocumentService documentService;
@@ -62,10 +56,9 @@ class ProjectProposalServiceImplTest {
 	void setUp() {
 		projectProposalService = new ProjectProposalServiceImpl(
 				projectProposalRepository,
-				courseClassRepository,
-				courseClassEnrollmentRepository,
-				userRepository,
-				projectRepository,
+				courseClassService,
+				authService,
+				projectService,
 				documentService);
 		lenient().when(documentService.findByContext(any(), any())).thenReturn(java.util.List.of());
 	}
@@ -74,9 +67,9 @@ class ProjectProposalServiceImplTest {
 	void shouldCreateSubmittedProposalForStudent() {
 		User student = user(Role.STUDENT);
 		CourseClass courseClass = courseClass();
-		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
-		when(courseClassRepository.findById(1L)).thenReturn(Optional.of(courseClass));
-		when(courseClassEnrollmentRepository.existsByStudentIdAndCourseClassId(1L, 1L)).thenReturn(true);
+		when(authService.getUserByEmail("student@example.com")).thenReturn(student);
+		when(courseClassService.getCourseClassEntity(1L)).thenReturn(courseClass);
+		when(courseClassService.isStudentEnrolled(1L, 1L)).thenReturn(true);
 		when(projectProposalRepository.existsBySubmittedByIdAndStatusIn(any(), any())).thenReturn(false);
 		when(projectProposalRepository.save(any(ProjectProposal.class))).thenAnswer(invocation -> {
 			ProjectProposal proposal = invocation.getArgument(0);
@@ -95,9 +88,9 @@ class ProjectProposalServiceImplTest {
 
 	@Test
 	void shouldRejectDuplicateActiveProposalForSubmitter() {
-		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(user(Role.STUDENT)));
-		when(courseClassRepository.findById(1L)).thenReturn(Optional.of(courseClass()));
-		when(courseClassEnrollmentRepository.existsByStudentIdAndCourseClassId(1L, 1L)).thenReturn(true);
+		when(authService.getUserByEmail("student@example.com")).thenReturn(user(Role.STUDENT));
+		when(courseClassService.getCourseClassEntity(1L)).thenReturn(courseClass());
+		when(courseClassService.isStudentEnrolled(1L, 1L)).thenReturn(true);
 		when(projectProposalRepository.existsBySubmittedByIdAndStatusIn(any(), any())).thenReturn(true);
 
 		assertThatThrownBy(() -> projectProposalService.createProposal("student@example.com", createRequest()))
@@ -107,9 +100,9 @@ class ProjectProposalServiceImplTest {
 
 	@Test
 	void shouldRejectStudentProposalForUnenrolledCourseClass() {
-		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(user(Role.STUDENT)));
-		when(courseClassRepository.findById(1L)).thenReturn(Optional.of(courseClass()));
-		when(courseClassEnrollmentRepository.existsByStudentIdAndCourseClassId(1L, 1L)).thenReturn(false);
+		when(authService.getUserByEmail("student@example.com")).thenReturn(user(Role.STUDENT));
+		when(courseClassService.getCourseClassEntity(1L)).thenReturn(courseClass());
+		when(courseClassService.isStudentEnrolled(1L, 1L)).thenReturn(false);
 
 		assertThatThrownBy(() -> projectProposalService.createProposal("student@example.com", createRequest()))
 				.isInstanceOf(BadRequestException.class)
@@ -120,7 +113,7 @@ class ProjectProposalServiceImplTest {
 	void shouldUpdateSubmittedProposalByOwner() {
 		User student = user(Role.STUDENT);
 		ProjectProposal proposal = proposal(student, ProposalStatus.SUBMITTED);
-		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
+		when(authService.getUserByEmail("student@example.com")).thenReturn(student);
 		when(projectProposalRepository.findById(10L)).thenReturn(Optional.of(proposal));
 		when(projectProposalRepository.save(proposal)).thenReturn(proposal);
 
@@ -136,7 +129,7 @@ class ProjectProposalServiceImplTest {
 	void shouldRejectUpdateForApprovedProposal() {
 		User student = user(Role.STUDENT);
 		ProjectProposal proposal = proposal(student, ProposalStatus.APPROVED);
-		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
+		when(authService.getUserByEmail("student@example.com")).thenReturn(student);
 		when(projectProposalRepository.findById(10L)).thenReturn(Optional.of(proposal));
 
 		assertThatThrownBy(() -> projectProposalService.updateProposal("student@example.com", 10L, updateRequest("Updated")))
@@ -149,9 +142,9 @@ class ProjectProposalServiceImplTest {
 		User instructor = user(Role.INSTRUCTOR);
 		User student = user(Role.STUDENT);
 		ProjectProposal proposal = proposal(student, ProposalStatus.SUBMITTED);
-		when(userRepository.findByEmail("instructor@example.com")).thenReturn(Optional.of(instructor));
+		when(authService.getUserByEmail("instructor@example.com")).thenReturn(instructor);
 		when(projectProposalRepository.findById(10L)).thenReturn(Optional.of(proposal));
-		when(projectRepository.existsByProjectProposalId(10L)).thenReturn(false);
+		when(projectService.existsByProjectProposalId(10L)).thenReturn(false);
 		when(projectProposalRepository.save(proposal)).thenReturn(proposal);
 
 		ProjectProposalResponse response = projectProposalService.instructorDecision(
@@ -161,17 +154,19 @@ class ProjectProposalServiceImplTest {
 
 		assertThat(response.status()).isEqualTo(ProposalStatus.APPROVED);
 		assertThat(response.approvedAt()).isNotNull();
-		ArgumentCaptor<Project> projectCaptor = ArgumentCaptor.forClass(Project.class);
-		verify(projectRepository).save(projectCaptor.capture());
-		assertThat(projectCaptor.getValue().getProjectProposalId()).isEqualTo(10L);
-		assertThat(projectCaptor.getValue().getTitle()).isEqualTo("Capstone Portal");
+		verify(projectService).createFromApprovedProposal(
+				1L,
+				"student@example.com",
+				"Capstone Portal",
+				"Expected output",
+				10L);
 	}
 
 	@Test
 	void shouldMarkProposalAsRevisionRequired() {
 		User instructor = user(Role.INSTRUCTOR);
 		ProjectProposal proposal = proposal(user(Role.STUDENT), ProposalStatus.SUBMITTED);
-		when(userRepository.findByEmail("instructor@example.com")).thenReturn(Optional.of(instructor));
+		when(authService.getUserByEmail("instructor@example.com")).thenReturn(instructor);
 		when(projectProposalRepository.findById(10L)).thenReturn(Optional.of(proposal));
 		when(projectProposalRepository.save(proposal)).thenReturn(proposal);
 
@@ -182,14 +177,14 @@ class ProjectProposalServiceImplTest {
 
 		assertThat(response.status()).isEqualTo(ProposalStatus.REVISION_REQUIRED);
 		assertThat(response.revisionRequestedAt()).isNotNull();
-		verify(projectRepository, never()).save(any(Project.class));
+		verify(projectService, never()).createFromApprovedProposal(any(), any(), any(), any(), any());
 	}
 
 	@Test
 	void shouldRejectProposal() {
 		User instructor = user(Role.INSTRUCTOR);
 		ProjectProposal proposal = proposal(user(Role.STUDENT), ProposalStatus.SUBMITTED);
-		when(userRepository.findByEmail("instructor@example.com")).thenReturn(Optional.of(instructor));
+		when(authService.getUserByEmail("instructor@example.com")).thenReturn(instructor);
 		when(projectProposalRepository.findById(10L)).thenReturn(Optional.of(proposal));
 		when(projectProposalRepository.save(proposal)).thenReturn(proposal);
 
@@ -204,7 +199,7 @@ class ProjectProposalServiceImplTest {
 
 	@Test
 	void shouldRejectStudentDecision() {
-		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(user(Role.STUDENT)));
+		when(authService.getUserByEmail("student@example.com")).thenReturn(user(Role.STUDENT));
 
 		assertThatThrownBy(() -> projectProposalService.instructorDecision(
 				"student@example.com",
@@ -216,7 +211,7 @@ class ProjectProposalServiceImplTest {
 
 	@Test
 	void shouldRejectInvalidDecisionStatus() {
-		when(userRepository.findByEmail("instructor@example.com")).thenReturn(Optional.of(user(Role.INSTRUCTOR)));
+		when(authService.getUserByEmail("instructor@example.com")).thenReturn(user(Role.INSTRUCTOR));
 
 		assertThatThrownBy(() -> projectProposalService.instructorDecision(
 				"instructor@example.com",
@@ -230,7 +225,7 @@ class ProjectProposalServiceImplTest {
 	void shouldRejectDecisionForAlreadyApprovedProposal() {
 		User instructor = user(Role.INSTRUCTOR);
 		ProjectProposal proposal = proposal(user(Role.STUDENT), ProposalStatus.APPROVED);
-		when(userRepository.findByEmail("instructor@example.com")).thenReturn(Optional.of(instructor));
+		when(authService.getUserByEmail("instructor@example.com")).thenReturn(instructor);
 		when(projectProposalRepository.findById(10L)).thenReturn(Optional.of(proposal));
 
 		assertThatThrownBy(() -> projectProposalService.instructorDecision(
@@ -245,7 +240,7 @@ class ProjectProposalServiceImplTest {
 	void shouldScheduleAdviserReview() {
 		User adviser = user(Role.ADVISER);
 		ProjectProposal proposal = proposal(user(Role.STUDENT), ProposalStatus.SUBMITTED);
-		when(userRepository.findByEmail("adviser@example.com")).thenReturn(Optional.of(adviser));
+		when(authService.getUserByEmail("adviser@example.com")).thenReturn(adviser);
 		when(projectProposalRepository.findById(10L)).thenReturn(Optional.of(proposal));
 		when(projectProposalRepository.save(proposal)).thenReturn(proposal);
 
@@ -261,7 +256,7 @@ class ProjectProposalServiceImplTest {
 	void shouldCompleteAdviserReviewWithRemarks() {
 		User adviser = user(Role.ADVISER);
 		ProjectProposal proposal = proposal(user(Role.STUDENT), ProposalStatus.ADVISER_REVIEW_SCHEDULED);
-		when(userRepository.findByEmail("adviser@example.com")).thenReturn(Optional.of(adviser));
+		when(authService.getUserByEmail("adviser@example.com")).thenReturn(adviser);
 		when(projectProposalRepository.findById(10L)).thenReturn(Optional.of(proposal));
 		when(projectProposalRepository.save(proposal)).thenReturn(proposal);
 
@@ -276,7 +271,7 @@ class ProjectProposalServiceImplTest {
 
 	@Test
 	void shouldRejectAdviserDecisionFromStudent() {
-		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(user(Role.STUDENT)));
+		when(authService.getUserByEmail("student@example.com")).thenReturn(user(Role.STUDENT));
 
 		assertThatThrownBy(() -> projectProposalService.adviserDecision(
 				"student@example.com",
@@ -288,7 +283,7 @@ class ProjectProposalServiceImplTest {
 
 	@Test
 	void shouldRejectInvalidAdviserDecisionStatus() {
-		when(userRepository.findByEmail("adviser@example.com")).thenReturn(Optional.of(user(Role.ADVISER)));
+		when(authService.getUserByEmail("adviser@example.com")).thenReturn(user(Role.ADVISER));
 
 		assertThatThrownBy(() -> projectProposalService.adviserDecision(
 				"adviser@example.com",
@@ -302,7 +297,7 @@ class ProjectProposalServiceImplTest {
 	void shouldRejectAdviserDecisionOnApprovedProposal() {
 		User adviser = user(Role.ADVISER);
 		ProjectProposal proposal = proposal(user(Role.STUDENT), ProposalStatus.APPROVED);
-		when(userRepository.findByEmail("adviser@example.com")).thenReturn(Optional.of(adviser));
+		when(authService.getUserByEmail("adviser@example.com")).thenReturn(adviser);
 		when(projectProposalRepository.findById(10L)).thenReturn(Optional.of(proposal));
 
 		assertThatThrownBy(() -> projectProposalService.adviserDecision(

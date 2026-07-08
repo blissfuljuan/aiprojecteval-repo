@@ -23,6 +23,7 @@ import com.blissfuljuan.aiprojecteval.document.repository.DocumentVersionReposit
 import com.blissfuljuan.aiprojecteval.document.validation.DocumentLinkValidationService;
 import com.blissfuljuan.aiprojecteval.document.validation.DocumentValidationResult;
 import com.blissfuljuan.aiprojecteval.document.validation.GoogleDriveProperties;
+import com.blissfuljuan.aiprojecteval.identity.service.AuthService;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.security.core.Authentication;
@@ -39,6 +40,7 @@ class DocumentServiceImpl implements DocumentService {
 	private final DocumentLinkValidationService documentLinkValidationService;
 	private final GoogleDriveProperties googleDriveProperties;
 	private final DocumentTextExtractionService documentTextExtractionService;
+	private final AuthService authService;
 
 	DocumentServiceImpl(
 			DocumentRepository documentRepository,
@@ -46,13 +48,15 @@ class DocumentServiceImpl implements DocumentService {
 			DocumentMapper documentMapper,
 			DocumentLinkValidationService documentLinkValidationService,
 			GoogleDriveProperties googleDriveProperties,
-			DocumentTextExtractionService documentTextExtractionService) {
+			DocumentTextExtractionService documentTextExtractionService,
+			AuthService authService) {
 		this.documentRepository = documentRepository;
 		this.documentVersionRepository = documentVersionRepository;
 		this.documentMapper = documentMapper;
 		this.documentLinkValidationService = documentLinkValidationService;
 		this.googleDriveProperties = googleDriveProperties;
 		this.documentTextExtractionService = documentTextExtractionService;
+		this.authService = authService;
 	}
 
 	@Override
@@ -295,8 +299,7 @@ class DocumentServiceImpl implements DocumentService {
 		try {
 			return Long.valueOf(authentication.getName());
 		} catch (NumberFormatException exception) {
-			// Existing authentication names are emails; keep the field nullable until identity exposes an ID principal.
-			return null;
+			return authService.getCurrentUser(authentication.getName()).id();
 		}
 	}
 }

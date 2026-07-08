@@ -27,6 +27,9 @@ import com.blissfuljuan.aiprojecteval.document.repository.DocumentRepository;
 import com.blissfuljuan.aiprojecteval.document.repository.DocumentVersionRepository;
 import com.blissfuljuan.aiprojecteval.document.validation.DocumentLinkValidationService;
 import com.blissfuljuan.aiprojecteval.document.validation.GoogleDriveProperties;
+import com.blissfuljuan.aiprojecteval.identity.dto.UserResponse;
+import com.blissfuljuan.aiprojecteval.identity.model.Role;
+import com.blissfuljuan.aiprojecteval.identity.service.AuthService;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,6 +56,9 @@ class DocumentServiceImplTest {
 	@Mock
 	private DocumentTextExtractionService documentTextExtractionService;
 
+	@Mock
+	private AuthService authService;
+
 	private DocumentServiceImpl documentService;
 	private GoogleDriveProperties googleDriveProperties;
 
@@ -66,7 +72,8 @@ class DocumentServiceImplTest {
 				new DocumentMapper(),
 				documentLinkValidationService,
 				googleDriveProperties,
-				documentTextExtractionService);
+				documentTextExtractionService,
+				authService);
 	}
 
 	@Test
@@ -156,6 +163,43 @@ class DocumentServiceImplTest {
 		});
 
 		documentService.submitExternalLink(request("https://example.com/document.pdf"));
+
+		ArgumentCaptor<DocumentVersion> versionCaptor = ArgumentCaptor.forClass(DocumentVersion.class);
+		verify(documentVersionRepository).save(versionCaptor.capture());
+		assertThat(versionCaptor.getValue().getSubmittedByUserId()).isEqualTo(7L);
+	}
+
+	@Test
+	void shouldResolveEmailAuthenticatedPrincipalAsUserId() {
+		SecurityContextHolder.getContext().setAuthentication(
+				new UsernamePasswordAuthenticationToken("student@example.com", null));
+		when(authService.getCurrentUser("student@example.com"))
+				.thenReturn(new UserResponse(7L, "Test", null, "Student", "student@example.com", Role.STUDENT, true));
+		when(documentRepository.findByContextTypeAndContextIdAndDocumentType(
+				DocumentContextType.PROJECT_PROPOSAL,
+				10L,
+				DocumentType.PROJECT_PROPOSAL_DOCUMENT)).thenReturn(Optional.empty());
+		when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> {
+			Document document = invocation.getArgument(0);
+			document.setId(100L);
+			document.setCreatedAt(LocalDateTime.now());
+			document.setUpdatedAt(LocalDateTime.now());
+			return document;
+		});
+		when(documentVersionRepository.findTopByDocumentIdOrderByVersionNumberDesc(100L)).thenReturn(Optional.empty());
+		when(documentVersionRepository.save(any(DocumentVersion.class))).thenAnswer(invocation -> {
+			DocumentVersion version = invocation.getArgument(0);
+			version.setId(200L);
+			version.setCreatedAt(LocalDateTime.now());
+			version.setUpdatedAt(LocalDateTime.now());
+			return version;
+		});
+
+		documentService.submitExternalLink(request("https://example.com/document.pdf"));
+
+		ArgumentCaptor<Document> documentCaptor = ArgumentCaptor.forClass(Document.class);
+		verify(documentRepository, times(2)).save(documentCaptor.capture());
+		assertThat(documentCaptor.getAllValues().get(0).getCreatedByUserId()).isEqualTo(7L);
 
 		ArgumentCaptor<DocumentVersion> versionCaptor = ArgumentCaptor.forClass(DocumentVersion.class);
 		verify(documentVersionRepository).save(versionCaptor.capture());

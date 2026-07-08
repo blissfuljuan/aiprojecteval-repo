@@ -11,7 +11,7 @@ import com.blissfuljuan.aiprojecteval.courseclass.repository.CourseClassEnrollme
 import com.blissfuljuan.aiprojecteval.courseclass.repository.CourseClassRepository;
 import com.blissfuljuan.aiprojecteval.identity.model.Role;
 import com.blissfuljuan.aiprojecteval.identity.model.User;
-import com.blissfuljuan.aiprojecteval.identity.repository.UserRepository;
+import com.blissfuljuan.aiprojecteval.identity.service.AuthService;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,15 +21,15 @@ class CourseClassServiceImpl implements CourseClassService {
 
 	private final CourseClassRepository courseClassRepository;
 	private final CourseClassEnrollmentRepository courseClassEnrollmentRepository;
-	private final UserRepository userRepository;
+	private final AuthService authService;
 
 	CourseClassServiceImpl(
 			CourseClassRepository courseClassRepository,
 			CourseClassEnrollmentRepository courseClassEnrollmentRepository,
-			UserRepository userRepository) {
+			AuthService authService) {
 		this.courseClassRepository = courseClassRepository;
 		this.courseClassEnrollmentRepository = courseClassEnrollmentRepository;
-		this.userRepository = userRepository;
+		this.authService = authService;
 	}
 
 	@Override
@@ -122,14 +122,25 @@ class CourseClassServiceImpl implements CourseClassService {
 		courseClassEnrollmentRepository.delete(enrollment);
 	}
 
+	@Override
+	@Transactional(readOnly = true)
+	public CourseClass getCourseClassEntity(Long id) {
+		return findCourseClass(id);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public boolean isStudentEnrolled(Long studentId, Long courseClassId) {
+		return courseClassEnrollmentRepository.existsByStudentIdAndCourseClassId(studentId, courseClassId);
+	}
+
 	private CourseClass findCourseClass(Long id) {
 		return courseClassRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Course class not found"));
 	}
 
 	private User findStudentByEmail(String email) {
-		User user = userRepository.findByEmail(email)
-				.orElseThrow(() -> new ResourceNotFoundException("User not found"));
+		User user = authService.getUserByEmail(email);
 
 		if (user.getRole() != Role.STUDENT) {
 			throw new BadRequestException("Only students can manage course class enrollments");

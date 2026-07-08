@@ -17,7 +17,7 @@ import com.blissfuljuan.aiprojecteval.courseclass.repository.CourseClassEnrollme
 import com.blissfuljuan.aiprojecteval.courseclass.repository.CourseClassRepository;
 import com.blissfuljuan.aiprojecteval.identity.model.Role;
 import com.blissfuljuan.aiprojecteval.identity.model.User;
-import com.blissfuljuan.aiprojecteval.identity.repository.UserRepository;
+import com.blissfuljuan.aiprojecteval.identity.service.AuthService;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,13 +36,13 @@ class CourseClassServiceImplTest {
 	private CourseClassEnrollmentRepository courseClassEnrollmentRepository;
 
 	@Mock
-	private UserRepository userRepository;
+	private AuthService authService;
 
 	private CourseClassServiceImpl service;
 
 	@BeforeEach
 	void setUp() {
-		service = new CourseClassServiceImpl(courseClassRepository, courseClassEnrollmentRepository, userRepository);
+		service = new CourseClassServiceImpl(courseClassRepository, courseClassEnrollmentRepository, authService);
 	}
 
 	@Test
@@ -152,7 +152,7 @@ class CourseClassServiceImplTest {
 	void shouldEnrollStudentByClassCode() {
 		User student = userWithId(7L, Role.STUDENT);
 		CourseClass courseClass = courseClassWithId(1L, "Capstone", "CAP101");
-		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
+		when(authService.getUserByEmail("student@example.com")).thenReturn(student);
 		when(courseClassRepository.findByCodeIgnoreCase("CAP101")).thenReturn(Optional.of(courseClass));
 		when(courseClassEnrollmentRepository.existsByStudentIdAndCourseClassId(7L, 1L)).thenReturn(false);
 
@@ -165,7 +165,7 @@ class CourseClassServiceImplTest {
 	@Test
 	void shouldRejectInvalidClassCode() {
 		User student = userWithId(7L, Role.STUDENT);
-		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
+		when(authService.getUserByEmail("student@example.com")).thenReturn(student);
 		when(courseClassRepository.findByCodeIgnoreCase("BADCODE")).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> service.enroll("student@example.com", new CourseClassEnrollmentRequest("BADCODE")))
@@ -176,7 +176,7 @@ class CourseClassServiceImplTest {
 	@Test
 	void shouldRejectBlankClassCode() {
 		User student = userWithId(7L, Role.STUDENT);
-		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
+		when(authService.getUserByEmail("student@example.com")).thenReturn(student);
 
 		assertThatThrownBy(() -> service.enroll("student@example.com", new CourseClassEnrollmentRequest("   ")))
 				.isInstanceOf(BadRequestException.class)
@@ -187,7 +187,7 @@ class CourseClassServiceImplTest {
 	void shouldRejectDuplicateEnrollment() {
 		User student = userWithId(7L, Role.STUDENT);
 		CourseClass courseClass = courseClassWithId(1L, "Capstone", "CAP101");
-		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
+		when(authService.getUserByEmail("student@example.com")).thenReturn(student);
 		when(courseClassRepository.findByCodeIgnoreCase("CAP101")).thenReturn(Optional.of(courseClass));
 		when(courseClassEnrollmentRepository.existsByStudentIdAndCourseClassId(7L, 1L)).thenReturn(true);
 
@@ -200,7 +200,7 @@ class CourseClassServiceImplTest {
 	void shouldReturnStudentEnrolledCourseClasses() {
 		User student = userWithId(7L, Role.STUDENT);
 		CourseClassEnrollment enrollment = new CourseClassEnrollment(student, courseClassWithId(1L, "Capstone", "CAP101"));
-		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
+		when(authService.getUserByEmail("student@example.com")).thenReturn(student);
 		when(courseClassEnrollmentRepository.findByStudentIdOrderByCourseClass_NameAsc(7L))
 				.thenReturn(List.of(enrollment));
 
@@ -214,7 +214,7 @@ class CourseClassServiceImplTest {
 	void shouldUnenrollStudentFromCourseClass() {
 		User student = userWithId(7L, Role.STUDENT);
 		CourseClassEnrollment enrollment = new CourseClassEnrollment(student, courseClassWithId(1L, "Capstone", "CAP101"));
-		when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(student));
+		when(authService.getUserByEmail("student@example.com")).thenReturn(student);
 		when(courseClassEnrollmentRepository.findByStudentIdAndCourseClassId(7L, 1L))
 				.thenReturn(Optional.of(enrollment));
 
@@ -226,7 +226,7 @@ class CourseClassServiceImplTest {
 	@Test
 	void shouldRejectEnrollmentForNonStudent() {
 		User instructor = userWithId(7L, Role.INSTRUCTOR);
-		when(userRepository.findByEmail("instructor@example.com")).thenReturn(Optional.of(instructor));
+		when(authService.getUserByEmail("instructor@example.com")).thenReturn(instructor);
 
 		assertThatThrownBy(() -> service.findMyCourseClasses("instructor@example.com"))
 				.isInstanceOf(BadRequestException.class)

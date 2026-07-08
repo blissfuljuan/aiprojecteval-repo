@@ -21,7 +21,7 @@ import com.blissfuljuan.aiprojecteval.document.model.DocumentType;
 import com.blissfuljuan.aiprojecteval.document.model.DocumentVersion;
 import com.blissfuljuan.aiprojecteval.document.service.DocumentService;
 import com.blissfuljuan.aiprojecteval.projectproposal.model.ProjectProposal;
-import com.blissfuljuan.aiprojecteval.projectproposal.repository.ProjectProposalRepository;
+import com.blissfuljuan.aiprojecteval.projectproposal.service.ProjectProposalService;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -32,7 +32,7 @@ class ProjectProposalAIEvaluationServiceImpl implements ProjectProposalAIEvaluat
 
 	private final AIProperties aiProperties;
 	private final List<AIProvider> providers;
-	private final ProjectProposalRepository projectProposalRepository;
+	private final ProjectProposalService projectProposalService;
 	private final DocumentService documentService;
 	private final AIEvaluationRepository aiEvaluationRepository;
 	private final ProjectProposalAIEvaluationResultRepository resultRepository;
@@ -43,7 +43,7 @@ class ProjectProposalAIEvaluationServiceImpl implements ProjectProposalAIEvaluat
 	ProjectProposalAIEvaluationServiceImpl(
 			AIProperties aiProperties,
 			List<AIProvider> providers,
-			ProjectProposalRepository projectProposalRepository,
+			ProjectProposalService projectProposalService,
 			DocumentService documentService,
 			AIEvaluationRepository aiEvaluationRepository,
 			ProjectProposalAIEvaluationResultRepository resultRepository,
@@ -52,7 +52,7 @@ class ProjectProposalAIEvaluationServiceImpl implements ProjectProposalAIEvaluat
 			ProjectProposalAIEvaluationMapper mapper) {
 		this.aiProperties = aiProperties;
 		this.providers = providers;
-		this.projectProposalRepository = projectProposalRepository;
+		this.projectProposalService = projectProposalService;
 		this.documentService = documentService;
 		this.aiEvaluationRepository = aiEvaluationRepository;
 		this.resultRepository = resultRepository;
@@ -154,8 +154,7 @@ class ProjectProposalAIEvaluationServiceImpl implements ProjectProposalAIEvaluat
 	}
 
 	private ProjectProposal ensureProposalExists(Long proposalId) {
-		return projectProposalRepository.findById(proposalId)
-				.orElseThrow(() -> new ResourceNotFoundException("Project proposal not found"));
+		return projectProposalService.getProposalEntity(proposalId);
 	}
 
 	private DocumentVersion findAndValidateDocumentVersion(Long documentVersionId, Long proposalId) {
