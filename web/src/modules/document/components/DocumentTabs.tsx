@@ -2,13 +2,16 @@ import { Card, CardContent } from "@/common/ui/shadcn/card";
 import { ScrollArea } from "@/common/ui/shadcn/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/common/ui/shadcn/tabs";
 import { DocumentVersionHistory } from "@/modules/document/components/DocumentVersionHistory";
-import type { UploadedDocument } from "@/modules/document/types";
+import type { GenericDocument, GenericDocumentVersion } from "@/modules/document/types";
 
 type DocumentTabsProps = {
-  document: UploadedDocument;
+  document: GenericDocument;
+  versions: GenericDocumentVersion[];
 };
 
-export function DocumentTabs({ document }: DocumentTabsProps) {
+export function DocumentTabs({ document, versions }: DocumentTabsProps) {
+  const version = document.currentVersion;
+
   return (
     <Tabs defaultValue="overview">
       <TabsList className="w-full justify-start overflow-x-auto">
@@ -22,10 +25,10 @@ export function DocumentTabs({ document }: DocumentTabsProps) {
         <Card>
           <CardContent className="space-y-3 p-6 text-sm text-muted-foreground">
             <p>
-              {document.fileName} is part of {document.projectName} submission {document.submissionVersion}. This
-              placeholder summarizes lifecycle state after submission without loading document content from an API.
+              {document.title} is linked to {formatLabel(document.contextType)} #{document.contextId}. Its current
+              version is {version ? `version ${version.versionNumber}` : "not available"}.
             </p>
-            <p>The module will later support read-only inspection, re-analysis tracking, and document history review.</p>
+            <p>Validation and extraction state are loaded from the backend document workflow.</p>
           </CardContent>
         </Card>
       </TabsContent>
@@ -35,9 +38,7 @@ export function DocumentTabs({ document }: DocumentTabsProps) {
           <CardContent className="p-6">
             <ScrollArea className="max-h-72 rounded-md border bg-muted/30 p-4">
               <p className="text-sm leading-6 text-muted-foreground">
-                Placeholder extracted text: The system shall allow authorized evaluators to inspect submitted project
-                documentation. The document shall include functional requirements, non-functional requirements, system
-                design references, test coverage notes, and compliance traceability sections.
+                Extracted text is stored server-side for AI evaluation and is not exposed in the document metadata API.
               </p>
             </ScrollArea>
           </CardContent>
@@ -57,8 +58,16 @@ export function DocumentTabs({ document }: DocumentTabsProps) {
       </TabsContent>
 
       <TabsContent value="history">
-        <DocumentVersionHistory />
+        <DocumentVersionHistory versions={versions} />
       </TabsContent>
     </Tabs>
   );
+}
+
+function formatLabel(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }

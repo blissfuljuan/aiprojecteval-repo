@@ -15,6 +15,8 @@ public interface DocumentService {
 
 	DocumentResponse findById(Long documentId);
 
+	List<DocumentSummaryResponse> findAll();
+
 	List<DocumentSummaryResponse> findByContext(DocumentContextType contextType, Long contextId);
 
 	List<DocumentResponse> findByContextAndDocumentType(

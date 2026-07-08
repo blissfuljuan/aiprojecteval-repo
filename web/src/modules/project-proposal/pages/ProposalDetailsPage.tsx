@@ -8,6 +8,7 @@ import { Select } from "@/common/ui/shadcn/select";
 import { Separator } from "@/common/ui/shadcn/separator";
 import { Textarea } from "@/common/ui/shadcn/textarea";
 import { useAuth } from "@/modules/identity/context/AuthContext";
+import { ProjectProposalAIEvaluationSection } from "@/modules/project-proposal/components/ProjectProposalAIEvaluationSection";
 import { ProjectProposalDocumentSection } from "@/modules/project-proposal/components/ProjectProposalDocumentSection";
 import { ProposalStatusBadge } from "@/modules/project-proposal/components/ProposalStatusBadge";
 import { useProposal } from "@/modules/project-proposal/hooks/useProposal";
@@ -115,7 +116,9 @@ export function ProposalDetailsPage() {
             <h1 className="text-3xl font-semibold tracking-normal">{proposal.title}</h1>
             <ProposalStatusBadge status={proposal.status} />
           </div>
-          <p className="text-sm text-muted-foreground">{proposal.courseClassName} · Submitted by {proposal.submittedByName}</p>
+          <p className="text-sm text-muted-foreground">
+            {proposal.courseClassName} - Submitted by {proposal.submittedByName}
+          </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button asChild variant="outline">
@@ -193,6 +196,8 @@ export function ProposalDetailsPage() {
         canManage={canEdit}
         onDocumentChanged={refresh}
       />
+
+      <ProjectProposalAIEvaluationSection proposalId={proposal.id} canEvaluate={isAdviser || isInstructor} />
 
       {showAdviserPanel && (
         <Card>

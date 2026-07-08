@@ -1,21 +1,22 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/common/ui/shadcn/card";
 import { Separator } from "@/common/ui/shadcn/separator";
 import { DocumentStatusBadge } from "@/modules/document/components/DocumentStatusBadge";
-import type { UploadedDocument } from "@/modules/document/types";
+import type { GenericDocument } from "@/modules/document/types";
 
 type DocumentMetadataCardProps = {
-  document: UploadedDocument;
+  document: GenericDocument;
 };
 
 export function DocumentMetadataCard({ document }: DocumentMetadataCardProps) {
+  const version = document.currentVersion;
   const metadata = [
-    { label: "File Name", value: document.fileName },
-    { label: "Document Type", value: document.documentType },
-    { label: "Project", value: document.projectName },
-    { label: "Submission Version", value: document.submissionVersion },
-    { label: "Uploaded By", value: document.uploadedBy },
-    { label: "Uploaded Date", value: document.uploadedAt },
-    { label: "File Size", value: document.fileSize },
+    { label: "Title", value: document.title },
+    { label: "Document Type", value: formatLabel(document.documentType) },
+    { label: "Context", value: `${formatLabel(document.contextType)} #${document.contextId}` },
+    { label: "Current Version", value: version ? `Version ${version.versionNumber}` : "None" },
+    { label: "File Name", value: version?.fileName ?? "Not available" },
+    { label: "Submitted Date", value: version?.submittedAt ? new Date(version.submittedAt).toLocaleDateString() : "Not available" },
+    { label: "File Size", value: formatBytes(version?.fileSizeBytes) },
   ];
 
   return (
@@ -37,7 +38,30 @@ export function DocumentMetadataCard({ document }: DocumentMetadataCardProps) {
           <span className="text-sm text-muted-foreground">Current Status</span>
           <DocumentStatusBadge status={document.status} />
         </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm text-muted-foreground">Validation</span>
+          <DocumentStatusBadge status={version?.validationStatus} />
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm text-muted-foreground">Extraction</span>
+          <DocumentStatusBadge status={version?.extractionStatus} />
+        </div>
       </CardContent>
     </Card>
   );
+}
+
+function formatLabel(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatBytes(value: number | null | undefined) {
+  if (!value) return "Not available";
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }

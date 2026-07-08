@@ -12,10 +12,11 @@ import {
   TableRow,
 } from "@/common/ui/shadcn/table";
 import { DocumentStatusBadge } from "@/modules/document/components/DocumentStatusBadge";
-import type { UploadedDocument } from "@/modules/document/types";
+import type { GenericDocumentSummary } from "@/modules/document/types";
+import { paths } from "@/routes/paths";
 
 type DocumentsTableProps = {
-  documents: UploadedDocument[];
+  documents: GenericDocumentSummary[];
 };
 
 export function DocumentsTable({ documents }: DocumentsTableProps) {
@@ -29,32 +30,34 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>File Name</TableHead>
+                <TableHead>Title</TableHead>
                 <TableHead>Document Type</TableHead>
-                <TableHead>Project</TableHead>
-                <TableHead>Submission Version</TableHead>
-                <TableHead>Uploaded By</TableHead>
-                <TableHead>Uploaded Date</TableHead>
-                <TableHead>Analysis Status</TableHead>
+                <TableHead>Context</TableHead>
+                <TableHead>Version</TableHead>
+                <TableHead>Validation</TableHead>
+                <TableHead>Extraction</TableHead>
+                <TableHead>Updated</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {documents.map((document) => (
                 <TableRow key={document.id}>
-                  <TableCell className="min-w-[220px] font-medium">{document.fileName}</TableCell>
-                  <TableCell>{document.documentType}</TableCell>
-                  <TableCell className="min-w-[220px]">{document.projectName}</TableCell>
-                  <TableCell>{document.submissionVersion}</TableCell>
-                  <TableCell className="min-w-[140px]">{document.uploadedBy}</TableCell>
-                  <TableCell className="min-w-[120px]">{document.uploadedAt}</TableCell>
+                  <TableCell className="min-w-[220px] font-medium">{document.title}</TableCell>
+                  <TableCell>{formatLabel(document.documentType)}</TableCell>
+                  <TableCell className="min-w-[160px]">{formatLabel(document.contextType)} #{document.contextId}</TableCell>
+                  <TableCell>{document.currentVersionNumber ? `Version ${document.currentVersionNumber}` : "None"}</TableCell>
                   <TableCell>
-                    <DocumentStatusBadge status={document.status} />
+                    <DocumentStatusBadge status={document.validationStatus} />
                   </TableCell>
+                  <TableCell>
+                    <DocumentStatusBadge status={document.extractionStatus} />
+                  </TableCell>
+                  <TableCell className="min-w-[120px]">{new Date(document.updatedAt).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-2">
                       <Button asChild variant="ghost" size="sm">
-                        <Link to={`/documents/${document.id}`}>
+                        <Link to={paths.documentDetails(document.id)}>
                           <Eye className="h-4 w-4" aria-hidden="true" />
                           View Details
                         </Link>
@@ -75,4 +78,12 @@ export function DocumentsTable({ documents }: DocumentsTableProps) {
       </CardContent>
     </Card>
   );
+}
+
+function formatLabel(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }

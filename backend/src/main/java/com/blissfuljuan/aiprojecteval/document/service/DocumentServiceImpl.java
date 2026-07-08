@@ -96,6 +96,15 @@ class DocumentServiceImpl implements DocumentService {
 
 	@Override
 	@Transactional(readOnly = true)
+	public List<DocumentSummaryResponse> findAll() {
+		return documentRepository.findAllByOrderByUpdatedAtDesc()
+				.stream()
+				.map(document -> documentMapper.toSummaryResponse(document, findCurrentVersion(document)))
+				.toList();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public List<DocumentSummaryResponse> findByContext(DocumentContextType contextType, Long contextId) {
 		return documentRepository.findByContextTypeAndContextId(contextType, contextId)
 				.stream()

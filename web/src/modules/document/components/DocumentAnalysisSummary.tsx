@@ -1,16 +1,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/common/ui/shadcn/card";
 import { Progress } from "@/common/ui/shadcn/progress";
 import { Separator } from "@/common/ui/shadcn/separator";
-import type { AnalysisResult, UploadedDocument } from "@/modules/document/types";
+import type { AnalysisResult, GenericDocument } from "@/modules/document/types";
 
 type DocumentAnalysisSummaryProps = {
   analysis: AnalysisResult;
-  document: UploadedDocument;
+  document: GenericDocument;
 };
 
 export function DocumentAnalysisSummary({ analysis, document }: DocumentAnalysisSummaryProps) {
+  const version = document.currentVersion;
   const structureStatus = analysis.structuralAccuracy >= 85 ? "Passed with minor notes" : "Needs reviewer attention";
-  const aiStatus = document.status === "ANALYZED" ? "Completed" : "Pending or requires review";
+  const aiStatus = version?.extractionStatus === "EXTRACTED" ? "Ready for AI evaluation" : "Text extraction required";
 
   return (
     <Card>
@@ -36,8 +37,10 @@ export function DocumentAnalysisSummary({ analysis, document }: DocumentAnalysis
             <span className="text-right text-sm font-medium">{aiStatus}</span>
           </div>
           <div className="flex items-center justify-between gap-4">
-            <span className="text-sm text-muted-foreground">Last Analyzed</span>
-            <span className="text-right text-sm font-medium">Apr 25, 2026</span>
+            <span className="text-sm text-muted-foreground">Last Extracted</span>
+            <span className="text-right text-sm font-medium">
+              {version?.extractedAt ? new Date(version.extractedAt).toLocaleDateString() : "Not yet extracted"}
+            </span>
           </div>
         </div>
       </CardContent>

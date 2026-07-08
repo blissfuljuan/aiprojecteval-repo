@@ -8,7 +8,7 @@ import { DocumentsTable } from "@/modules/document/components/DocumentsTable";
 import { useDocuments } from "@/modules/document/hooks/useDocuments";
 
 export function DocumentListPage() {
-  const { documents, totalDocuments, pendingAnalysis, analyzed, needsReview } = useDocuments();
+  const { documents, totalDocuments, pendingAnalysis, analyzed, needsReview, isLoading, error, refresh } = useDocuments();
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -24,9 +24,9 @@ export function DocumentListPage() {
             <Filter className="h-4 w-4" aria-hidden="true" />
             Filter
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" type="button" onClick={() => void refresh()} disabled={isLoading}>
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
-            Refresh
+            {isLoading ? "Refreshing..." : "Refresh"}
           </Button>
         </div>
       </div>
@@ -69,7 +69,8 @@ export function DocumentListPage() {
         </CardContent>
       </Card>
 
-      <DocumentsTable documents={documents} />
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      {isLoading ? <p className="text-sm text-muted-foreground">Loading documents...</p> : <DocumentsTable documents={documents} />}
     </div>
   );
 }

@@ -42,6 +42,12 @@ public class DocumentController {
 		return ApiResponse.ok("Document link submitted", documentService.submitExternalLink(request));
 	}
 
+	@GetMapping
+	@PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR', 'ADVISER')")
+	public ApiResponse<List<DocumentSummaryResponse>> findAll() {
+		return ApiResponse.ok(documentService.findAll());
+	}
+
 	@GetMapping("/{documentId}")
 	public ApiResponse<DocumentResponse> findById(Authentication authentication, @PathVariable Long documentId) {
 		DocumentResponse document = documentService.findById(documentId);
